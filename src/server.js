@@ -311,6 +311,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': type });
+  if (Buffer.isBuffer(body)) return res.end(body);          // 정적 파일(HTML/JS/CSS 등)은 그대로 전송
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 function readBody(req) {
