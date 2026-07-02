@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize } from 'node:path';
 import { db, nowISO, seedIfEmpty } from './db.js';
 import { elapsedMinutes, calcCharge, chargeFromMemberMinutes } from './billing.js';
+import { verifyPassword, hashPassword, createToken, getSession, destroyToken } from './auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(__dirname, '..', 'public');
@@ -137,7 +138,7 @@ function endSession(seatId) {
       .run(s.id, s.member_id ?? null, 'seat', amount, 'cash', end);
   }
   broadcast();
-  return { amount, minutes: mins };
+  return { amount, minutes: mins, session_id: s.id };
 }
 
 function createMember({ login_id, name, phone }) {
@@ -212,6 +213,86 @@ function dailyReport(date) {
   return { date: d, total, by_type: byType, sessions };
 }
 
+// ---- 요금제 관리 ----
+function createPlan({ name, kind = 'time', won_per_hour = 1000 }) {
+  if (!name) throw new Error('요금제 이름 필요');
+  const info = db.prepare('INSERT INTO rate_plans (name, kind, won_per_hour, is_default) VALUES (?,?,?,0)')
+    .run(name, kind, +won_per_hour);
+  broadcast();
+  return db.prepare('SELECT * FROM rate_plans WHERE id=?').get(info.lastInsertRowid);
+}
+function updatePlan(id, { name, kind, won_per_hour, is_default }) {
+  const p = db.prepare('SELECT * FROM rate_plans WHERE id=?').get(id);
+  if (!p) throw new Error('요금제 없음');
+  db.prepare('UPDATE rate_plans SET name=?, kind=?, won_per_hour=? WHERE id=?')
+    .run(name ?? p.name, kind ?? p.kind, won_per_hour ?? p.won_per_hour, id);
+  if (is_default) {
+    db.prepare('UPDATE rate_plans SET is_default=0').run();
+    db.prepare('UPDATE rate_plans SET is_default=1 WHERE id=?').run(id);
+  }
+  broadcast();
+  return db.prepare('SELECT * FROM rate_plans WHERE id=?').get(id);
+}
+function deletePlan(id) {
+  const used = db.prepare('SELECT COUNT(*) c FROM sessions WHERE rate_plan_id=?').get(id).c;
+  if (used > 0) throw new Error('이미 사용된 요금제는 삭제할 수 없습니다');
+  db.prepare('DELETE FROM rate_plans WHERE id=?').run(id);
+  broadcast();
+  return { ok: true };
+}
+
+// ---- 쿠폰 ----
+function createCoupons({ count = 1, kind = 'minutes', value }) {
+  if (!value || value <= 0) throw new Error('값 오류');
+  const codes = [];
+  const ins = db.prepare('INSERT INTO coupons (code, kind, value, created_at) VALUES (?,?,?,?)');
+  for (let i = 0; i < Math.min(count, 100); i++) {
+    const code = 'C' + Math.floor(Date.now() % 1e6) + '-' + (1000 + i);
+    ins.run(code, kind, +value, nowISO());
+    codes.push(code);
+  }
+  return { codes };
+}
+function redeemCoupon({ code, member_login }) {
+  const c = db.prepare('SELECT * FROM coupons WHERE code=?').get(code);
+  if (!c) throw new Error('없는 쿠폰');
+  if (c.used) throw new Error('이미 사용된 쿠폰');
+  const m = db.prepare('SELECT * FROM members WHERE login_id=?').get(member_login);
+  if (!m) throw new Error('회원을 찾을 수 없음');
+  if (c.kind === 'minutes') db.prepare('UPDATE members SET balance_minutes=balance_minutes+? WHERE id=?').run(c.value, m.id);
+  else db.prepare('UPDATE members SET balance_cash=balance_cash+? WHERE id=?').run(c.value, m.id);
+  db.prepare('UPDATE coupons SET used=1, member_id=?, used_at=? WHERE id=?').run(m.id, nowISO(), c.id);
+  broadcast();
+  return { ok: true, kind: c.kind, value: c.value };
+}
+
+// ---- 설정 ----
+function getSettings() {
+  return Object.fromEntries(db.prepare('SELECT key, value FROM settings').all().map((r) => [r.key, r.value]));
+}
+function putSettings(obj) {
+  const up = db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+  for (const [k, v] of Object.entries(obj)) up.run(k, String(v));
+  return getSettings();
+}
+
+// ---- 영수증 데이터 ----
+function receipt(sessionId) {
+  const s = db.prepare('SELECT * FROM sessions WHERE id=?').get(sessionId);
+  if (!s) throw new Error('세션 없음');
+  const seat = db.prepare('SELECT * FROM seats WHERE id=?').get(s.seat_id);
+  const plan = db.prepare('SELECT * FROM rate_plans WHERE id=?').get(s.rate_plan_id);
+  const member = s.member_id ? db.prepare('SELECT * FROM members WHERE id=?').get(s.member_id) : null;
+  return {
+    shop: getSettings(),
+    seat_no: seat?.seat_no, plan: plan?.name, kind: s.kind,
+    member: member?.login_id ?? null,
+    started_at: s.started_at, ended_at: s.ended_at,
+    minutes: s.ended_at ? elapsedMinutes(s.started_at, s.ended_at) : elapsedMinutes(s.started_at),
+    amount: s.amount,
+  };
+}
+
 // 유료게임 사용 리포트 (게임사 정산의 기초 자료 — 4단계에서 실제 정산에 활용)
 function gamesReport(date) {
   const d = date || nowISO().slice(0, 10);
@@ -245,6 +326,28 @@ const server = http.createServer(async (req, res) => {
   const path = url.pathname;
 
   try {
+    // 로그인 / 로그아웃
+    if (path === '/api/login' && req.method === 'POST') {
+      const b = await readBody(req);
+      const staff = db.prepare('SELECT * FROM staff WHERE login=?').get(b.login || '');
+      if (!staff || !verifyPassword(b.password || '', staff.password_hash)) {
+        return send(res, 401, { error: '아이디 또는 비밀번호가 틀립니다' });
+      }
+      const token = createToken(staff);
+      return send(res, 200, { token, name: staff.name, role: staff.role, login: staff.login });
+    }
+    if (path === '/api/logout' && req.method === 'POST') {
+      destroyToken((req.headers.authorization || '').replace('Bearer ', ''));
+      return send(res, 200, { ok: true });
+    }
+
+    // 인증 확인: 조회(GET)와 에이전트 엔드포인트를 제외한 변경 작업은 로그인 필요
+    const sess = getSession((req.headers.authorization || '').replace('Bearer ', ''));
+    const isAgent = path.startsWith('/api/agent/');
+    const isMutation = req.method !== 'GET' && path.startsWith('/api/');
+    if (isMutation && !isAgent && !sess) {
+      return send(res, 401, { error: '로그인이 필요합니다' });
+    }
     // 실시간 스트림
     if (path === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
@@ -290,6 +393,32 @@ const server = http.createServer(async (req, res) => {
 
     if (path === '/api/report/daily') return send(res, 200, dailyReport(url.searchParams.get('date')));
     if (path === '/api/report/games') return send(res, 200, gamesReport(url.searchParams.get('date')));
+
+    // 요금제
+    if (path === '/api/plans') {
+      if (req.method === 'GET') return send(res, 200, db.prepare('SELECT * FROM rate_plans').all());
+      if (req.method === 'POST') return send(res, 200, createPlan(await readBody(req)));
+    }
+    const mPlan = path.match(/^\/api\/plans\/(\d+)$/);
+    if (mPlan && req.method === 'PUT') return send(res, 200, updatePlan(+mPlan[1], await readBody(req)));
+    if (mPlan && req.method === 'DELETE') return send(res, 200, deletePlan(+mPlan[1]));
+
+    // 쿠폰
+    if (path === '/api/coupons') {
+      if (req.method === 'GET') return send(res, 200, db.prepare('SELECT * FROM coupons ORDER BY id DESC LIMIT 200').all());
+      if (req.method === 'POST') return send(res, 200, createCoupons(await readBody(req)));
+    }
+    if (path === '/api/coupons/redeem' && req.method === 'POST') return send(res, 200, redeemCoupon(await readBody(req)));
+
+    // 설정
+    if (path === '/api/settings') {
+      if (req.method === 'GET') return send(res, 200, getSettings());
+      if (req.method === 'PUT') return send(res, 200, putSettings(await readBody(req)));
+    }
+
+    // 영수증
+    const mRcp = path.match(/^\/api\/receipt\/(\d+)$/);
+    if (mRcp) return send(res, 200, receipt(+mRcp[1]));
 
     // 정적 파일
     let file = path === '/' ? '/index.html' : path;

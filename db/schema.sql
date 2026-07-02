@@ -85,9 +85,30 @@ CREATE TABLE IF NOT EXISTS game_defs (
   is_premium INTEGER NOT NULL DEFAULT 0     -- 유료 과금 대상 여부
 );
 
--- 직원(카운터 로그인) — 최소 뼈대
+-- 직원(카운터 로그인)
 CREATE TABLE IF NOT EXISTS staff (
-  id       INTEGER PRIMARY KEY,
-  login    TEXT NOT NULL UNIQUE,
-  name     TEXT
+  id            INTEGER PRIMARY KEY,
+  login         TEXT NOT NULL UNIQUE,
+  name          TEXT,
+  password_hash TEXT NOT NULL DEFAULT '',
+  role          TEXT NOT NULL DEFAULT 'staff', -- admin / staff
+  created_at    TEXT
+);
+
+-- 쿠폰(시간/선불금 충전용 코드)
+CREATE TABLE IF NOT EXISTS coupons (
+  id         INTEGER PRIMARY KEY,
+  code       TEXT NOT NULL UNIQUE,
+  kind       TEXT NOT NULL DEFAULT 'minutes', -- minutes / cash
+  value      INTEGER NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0,
+  member_id  INTEGER,
+  created_at TEXT NOT NULL,
+  used_at    TEXT
+);
+
+-- 매장 설정(영수증 등에 사용)
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT
 );

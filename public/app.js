@@ -5,16 +5,35 @@ const won = (n) => (n ?? 0).toLocaleString('ko-KR') + '원';
 const fmtMin = (m) => `${Math.floor(m / 60)}시간 ${m % 60}분`;
 const $ = (id) => document.getElementById(id);
 
+let TOKEN = localStorage.getItem('wm_token') || '';
+
 async function api(path, method = 'GET', body) {
-  const res = await fetch(path, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { showLogin(); throw new Error(data.error || '로그인이 필요합니다'); }
   if (!res.ok) throw new Error(data.error || '오류');
   return data;
 }
+
+function showLogin() { $('login').classList.remove('hidden'); }
+function hideLogin() { $('login').classList.add('hidden'); }
+
+$('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/login', 'POST', { login: $('loginId').value, password: $('loginPw').value });
+    TOKEN = r.token; localStorage.setItem('wm_token', TOKEN);
+    $('whoami').innerHTML = `${r.name} <a href="#" onclick="logout();return false">로그아웃</a>`;
+    hideLogin();
+  } catch (e2) { alert(e2.message); }
+});
+window.logout = async function () {
+  try { await api('/api/logout', 'POST'); } catch {}
+  TOKEN = ''; localStorage.removeItem('wm_token'); location.reload();
+};
 
 // ---- 탭 전환 ----
 document.querySelectorAll('.tab').forEach((btn) => {
@@ -26,6 +45,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (btn.dataset.tab === 'sales') loadSales();
     if (btn.dataset.tab === 'games') loadGames();
     if (btn.dataset.tab === 'members') loadMembers();
+    if (btn.dataset.tab === 'settings') loadSettings();
   });
 });
 
@@ -145,9 +165,33 @@ window.endSeat = async function (seatId) {
   try {
     const r = await api(`/api/seats/${seatId}/end`, 'POST');
     closeModal();
-    alert(`정산 완료\n이용 ${fmtMin(r.minutes)} / 요금 ${won(r.amount)}`);
+    if (confirm(`정산 완료\n이용 ${fmtMin(r.minutes)} / 요금 ${won(r.amount)}\n\n영수증을 출력할까요?`)) {
+      printReceipt(r.session_id);
+    }
   } catch (e) { alert(e.message); }
 };
+
+async function printReceipt(sessionId) {
+  const d = await api('/api/receipt/' + sessionId);
+  const w = window.open('', '_blank', 'width=320,height=480');
+  w.document.write(`<pre style="font-family:monospace;font-size:13px;padding:10px">
+      ${d.shop.shop_name || 'PC방'}
+${d.shop.business_no ? '사업자 ' + d.shop.business_no : ''}
+${d.shop.phone || ''}
+--------------------------------
+좌석      ${d.seat_no}번
+구분      ${d.kind === 'member' ? '회원' : '게스트'}${d.member ? ' (' + d.member + ')' : ''}
+요금제    ${d.plan || '-'}
+이용시간  ${Math.floor(d.minutes / 60)}시간 ${d.minutes % 60}분
+시작      ${new Date(d.started_at).toLocaleString('ko-KR')}
+종료      ${d.ended_at ? new Date(d.ended_at).toLocaleString('ko-KR') : '-'}
+--------------------------------
+합계      ${(d.amount || 0).toLocaleString('ko-KR')}원
+--------------------------------
+     이용해 주셔서 감사합니다
+</pre><script>print()</script>`);
+  w.document.close();
+}
 window.chargeMember = async function (id) {
   const min = prompt('충전할 시간(분)', '60');
   if (min == null) return;
@@ -184,4 +228,55 @@ $('memberForm').addEventListener('submit', async (e) => {
 $('salesDate').addEventListener('change', loadSales);
 $('gamesDate').addEventListener('change', loadGames);
 
+// ---- 설정: 매장/요금제/쿠폰 ----
+async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); }
+
+async function loadShop() {
+  const s = await api('/api/settings');
+  const f = $('shopForm');
+  f.shop_name.value = s.shop_name || ''; f.business_no.value = s.business_no || ''; f.phone.value = s.phone || '';
+}
+$('shopForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try { await api('/api/settings', 'PUT', Object.fromEntries(f)); alert('저장됨'); }
+  catch (err) { alert(err.message); }
+});
+
+async function loadPlans() {
+  const plans = await api('/api/plans');
+  $('plansTable').innerHTML = `<table class="tbl"><thead><tr><th>이름</th><th>종류</th><th class="r">요금</th><th>기본</th><th></th></tr></thead><tbody>${
+    plans.map((p) => `<tr><td>${p.name}</td><td>${p.kind}</td><td class="r">${won(p.won_per_hour)}/시간</td>
+      <td>${p.is_default ? '★' : `<button onclick="setDefaultPlan(${p.id})">지정</button>`}</td>
+      <td><button class="danger" onclick="delPlan(${p.id})">삭제</button></td></tr>`).join('')
+  }</tbody></table>`;
+}
+$('planForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try { await api('/api/plans', 'POST', { name: f.get('name'), won_per_hour: +f.get('won_per_hour') }); e.target.reset(); loadPlans(); }
+  catch (err) { alert(err.message); }
+});
+window.setDefaultPlan = async (id) => { try { await api('/api/plans/' + id, 'PUT', { is_default: true }); loadPlans(); } catch (e) { alert(e.message); } };
+window.delPlan = async (id) => { if (!confirm('삭제할까요?')) return; try { await api('/api/plans/' + id, 'DELETE'); loadPlans(); } catch (e) { alert(e.message); } };
+
+async function loadCoupons() {
+  const cs = await api('/api/coupons');
+  $('couponsTable').innerHTML = `<table class="tbl"><thead><tr><th>코드</th><th>종류</th><th class="r">값</th><th>상태</th></tr></thead><tbody>${
+    cs.map((c) => `<tr><td>${c.code}</td><td>${c.kind === 'minutes' ? '시간' : '선불금'}</td>
+      <td class="r">${c.value}${c.kind === 'minutes' ? '분' : '원'}</td>
+      <td>${c.used ? '<span class="muted">사용됨</span>' : '미사용'}</td></tr>`).join('') || '<tr><td colspan=4 class="muted">쿠폰 없음</td></tr>'
+  }</tbody></table>`;
+}
+$('couponForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    const r = await api('/api/coupons', 'POST', { kind: f.get('kind'), value: +f.get('value'), count: +f.get('count') });
+    alert('발급된 쿠폰:\n' + r.codes.join('\n')); loadCoupons();
+  } catch (err) { alert(err.message); }
+});
+
+// ---- 초기 인증 상태 ----
+if (TOKEN) { hideLogin(); } else { showLogin(); }
 connect();

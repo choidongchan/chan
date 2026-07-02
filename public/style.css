@@ -38,6 +38,8 @@ main { padding: 18px 22px; }
 .inline-form input { flex: 1; min-width: 120px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; }
 .dot.on { background: var(--ok); } .dot.off { background: #555; }
+.whoami { font-size: 12px; color: var(--muted); }
+.whoami a { color: var(--danger); margin-left: 8px; }
 h2 { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
 .seats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .seat {

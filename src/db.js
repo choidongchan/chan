@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { hashPassword } from './auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.WM_DB || join(__dirname, '..', 'wmcounter.db');
@@ -53,6 +54,21 @@ export function seedIfEmpty() {
     g.run('lostark', '로스트아크', '스마일게이트', 'LOSTARK.exe', 1);
     g.run('valorant', '발로란트', 'RIOT', 'VALORANT-Win64-Shipping.exe', 0);
     g.run('pubg', '배틀그라운드', '크래프톤', 'TslGame.exe', 0);
+  }
+
+  const staffCount = db.prepare('SELECT COUNT(*) c FROM staff').get().c;
+  if (staffCount === 0) {
+    // 기본 관리자 계정 — 최초 로그인 후 반드시 비밀번호를 변경하세요.
+    db.prepare('INSERT INTO staff (login, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
+      .run('admin', '관리자', hashPassword('admin1234'), 'admin', nowISO());
+  }
+
+  const hasShopName = db.prepare("SELECT COUNT(*) c FROM settings WHERE key='shop_name'").get().c;
+  if (!hasShopName) {
+    const set = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)');
+    set.run('shop_name', '우리 PC방');
+    set.run('business_no', '');
+    set.run('phone', '');
   }
 
   const memberCount = db.prepare('SELECT COUNT(*) c FROM members').get().c;

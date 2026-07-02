@@ -14,8 +14,10 @@
       <button class="tab" data-tab="sales">매출</button>
       <button class="tab" data-tab="games">유료게임</button>
       <button class="tab" data-tab="members">회원</button>
+      <button class="tab" data-tab="settings">설정</button>
     </nav>
     <div class="summary" id="summary"></div>
+    <div class="whoami" id="whoami"></div>
   </header>
 
   <main>
@@ -52,6 +54,34 @@
       </form>
       <div id="membersTable"></div>
     </section>
+
+    <!-- 설정 -->
+    <section class="view" id="view-settings">
+      <div class="view-head"><h2>매장 설정</h2></div>
+      <form id="shopForm" class="inline-form">
+        <input name="shop_name" placeholder="매장 이름" />
+        <input name="business_no" placeholder="사업자번호" />
+        <input name="phone" placeholder="전화번호" />
+        <button type="submit">저장</button>
+      </form>
+
+      <div class="view-head" style="margin-top:22px"><h2>요금제</h2></div>
+      <div id="plansTable"></div>
+      <form id="planForm" class="inline-form">
+        <input name="name" placeholder="요금제 이름" required />
+        <input name="won_per_hour" type="number" placeholder="시간당 요금(원)" required />
+        <button type="submit">요금제 추가</button>
+      </form>
+
+      <div class="view-head" style="margin-top:22px"><h2>쿠폰</h2></div>
+      <form id="couponForm" class="inline-form">
+        <select name="kind"><option value="minutes">시간(분)</option><option value="cash">선불금(원)</option></select>
+        <input name="value" type="number" placeholder="값" required />
+        <input name="count" type="number" placeholder="발급 수량" value="1" />
+        <button type="submit">쿠폰 발급</button>
+      </form>
+      <div id="couponsTable"></div>
+    </section>
   </main>
 
   <div id="modal" class="modal hidden">
@@ -59,6 +89,19 @@
       <h3 id="modalTitle"></h3>
       <div id="modalBody"></div>
       <button class="close" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+
+  <!-- 로그인 -->
+  <div id="login" class="modal">
+    <div class="modal-box">
+      <h3>카운터 로그인</h3>
+      <form id="loginForm">
+        <div class="field"><label>아이디</label><input id="loginId" value="admin" /></div>
+        <div class="field"><label>비밀번호</label><input id="loginPw" type="password" placeholder="admin1234" /></div>
+        <button style="width:100%">로그인</button>
+      </form>
+      <p class="note" style="margin-top:10px">최초 계정: admin / admin1234 — 로그인 후 변경 권장</p>
     </div>
   </div>
 
