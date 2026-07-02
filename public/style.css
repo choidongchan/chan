@@ -1,0 +1,53 @@
+:root {
+  --bg: #0f1420; --panel: #182031; --line: #2a3550;
+  --text: #e8edf7; --muted: #8b97b3;
+  --empty: #223; --use: #1f6feb; --use2: #143a7a;
+  --prem: #d29922; --ok: #2ea043; --danger: #f85149;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: 'Malgun Gothic', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+h1 { font-size: 20px; margin: 0; }
+.tag { font-size: 12px; background: var(--use); padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.summary { display: flex; gap: 18px; font-size: 14px; }
+.summary b { font-size: 18px; }
+.summary .sales b { color: var(--ok); }
+main { display: grid; grid-template-columns: 1fr 300px; gap: 18px; padding: 18px 22px; }
+h2 { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
+.seats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.seat {
+  background: var(--empty); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; min-height: 92px; cursor: pointer; transition: .15s; position: relative;
+}
+.seat:hover { transform: translateY(-2px); border-color: var(--use); }
+.seat.in_use { background: linear-gradient(160deg, var(--use), var(--use2)); }
+.seat .no { font-weight: 700; font-size: 16px; }
+.seat .zone { position: absolute; top: 10px; right: 10px; font-size: 11px; color: var(--muted); }
+.seat.in_use .zone { color: #cfe0ff; }
+.seat .info { margin-top: 8px; font-size: 12px; line-height: 1.5; }
+.seat .game { margin-top: 6px; font-size: 11px; }
+.seat .game.prem { color: #ffd479; font-weight: 700; }
+.seat .empty-label { color: var(--muted); margin-top: 22px; text-align: center; }
+.side { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.members { max-height: 340px; overflow: auto; font-size: 13px; }
+.member-row { padding: 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 6px; }
+.member-row button { font-size: 11px; }
+form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+input, select, button { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #0d1220; color: var(--text); font-size: 13px; }
+button { background: var(--use); border: none; cursor: pointer; font-weight: 600; }
+button.danger { background: var(--danger); }
+button:hover { opacity: .9; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+.modal.hidden { display: none; }
+.modal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: 360px; }
+.modal-box h3 { margin: 0 0 14px; }
+.modal-box .row { margin: 8px 0; font-size: 14px; }
+.modal-box .close { margin-top: 14px; background: #333d55; width: 100%; }
+.field { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.field label { font-size: 12px; color: var(--muted); }

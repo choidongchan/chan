@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WmCounter — 카운터</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>WmCounter <span class="tag">1단계</span></h1>
+    <div class="summary" id="summary"></div>
+  </header>
+
+  <main>
+    <section class="seats-wrap">
+      <h2>좌석 현황</h2>
+      <div id="seats" class="seats"></div>
+    </section>
+
+    <aside class="side">
+      <h2>회원</h2>
+      <div class="members" id="members"></div>
+      <form id="memberForm">
+        <input name="login_id" placeholder="아이디" required />
+        <input name="name" placeholder="이름" />
+        <button type="submit">회원 등록</button>
+      </form>
+    </aside>
+  </main>
+
+  <!-- 좌석 조작 팝업 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+      <button class="close" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
