@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WmCounter — 좌석</title>
+  <style>
+    :root { --bg:#0b0f1a; --panel:#161d2e; --line:#2a3550; --text:#eef2fb; --use:#1f6feb; --ok:#2ea043; --danger:#f85149; --prem:#ffd479; }
+    * { box-sizing: border-box; }
+    body { margin:0; height:100vh; background:var(--bg); color:var(--text); font-family:'Malgun Gothic',system-ui,sans-serif; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .card { text-align:center; }
+    .seatno { font-size:20px; color:#8b97b3; }
+    .clock { font-size:120px; font-weight:800; letter-spacing:2px; margin:10px 0; }
+    .sub { font-size:20px; color:#8b97b3; }
+    .game { margin-top:14px; font-size:18px; color:var(--prem); }
+    .low { color: var(--danger); }
+    button { margin-top:22px; padding:14px 26px; font-size:18px; border:none; border-radius:12px; background:var(--danger); color:#fff; cursor:pointer; }
+    /* 잠금(로그인) 화면 */
+    .lock { position:fixed; inset:0; background:linear-gradient(160deg,#0b0f1a,#111a30); display:flex; align-items:center; justify-content:center; }
+    .lock.hidden { display:none; }
+    .login-box { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:40px; width:360px; text-align:center; }
+    .login-box h1 { margin:0 0 6px; }
+    .login-box p { color:#8b97b3; margin:0 0 22px; }
+    .login-box input { width:100%; padding:14px; font-size:18px; border-radius:10px; border:1px solid var(--line); background:#0d1220; color:var(--text); margin-bottom:12px; }
+    .login-box button { width:100%; background:var(--use); margin-top:4px; }
+    .err { color:var(--danger); min-height:20px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="card" id="inUse" style="display:none">
+    <div class="seatno" id="seatLabel"></div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="sub" id="sub"></div>
+    <div class="game" id="game"></div>
+    <button onclick="logout()">로그아웃 / 이용종료</button>
+  </div>
+
+  <div class="lock" id="lock">
+    <div class="login-box">
+      <h1 id="lockSeat">좌석</h1>
+      <p>회원 아이디로 로그인하세요</p>
+      <input id="memberId" placeholder="회원 아이디" autocomplete="off" />
+      <div class="err" id="err"></div>
+      <button onclick="login()">로그인</button>
+      <p style="margin-top:18px;font-size:13px">비회원은 카운터에서 결제 후 이용하세요.</p>
+    </div>
+  </div>
+
+  <script src="/seat.js"></script>
+</body>
+</html>

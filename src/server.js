@@ -343,10 +343,44 @@ const server = http.createServer(async (req, res) => {
 
     // 인증 확인: 조회(GET)와 에이전트 엔드포인트를 제외한 변경 작업은 로그인 필요
     const sess = getSession((req.headers.authorization || '').replace('Bearer ', ''));
-    const isAgent = path.startsWith('/api/agent/');
+    const isAgent = path.startsWith('/api/agent/') || path.startsWith('/api/seat/');
     const isMutation = req.method !== 'GET' && path.startsWith('/api/');
     if (isMutation && !isAgent && !sess) {
       return send(res, 401, { error: '로그인이 필요합니다' });
+    }
+
+    // ---- 좌석 PC(키오스크)용 엔드포인트 (직원 토큰 불필요) ----
+    if (path === '/api/seat/status') {
+      const seatNo = +url.searchParams.get('seat_no');
+      const seat = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(seatNo);
+      if (!seat) return send(res, 404, { error: '좌석 없음' });
+      online.set(seatNo, Date.now());
+      const s = db.prepare("SELECT * FROM sessions WHERE seat_id=? AND status='active'").get(seat.id);
+      if (!s) return send(res, 200, { seat_no: seatNo, in_use: false });
+      const plan = db.prepare('SELECT * FROM rate_plans WHERE id=?').get(s.rate_plan_id);
+      const mins = elapsedMinutes(s.started_at);
+      let remain = null, charge = null, member = null;
+      if (s.kind === 'member' && s.member_id) {
+        const m = db.prepare('SELECT * FROM members WHERE id=?').get(s.member_id);
+        member = m?.login_id ?? null;
+        remain = m ? Math.max(0, m.balance_minutes - mins) : null;
+      } else charge = calcCharge(plan, mins);
+      return send(res, 200, {
+        seat_no: seatNo, in_use: true, kind: s.kind, member,
+        minutes: mins, remain_minutes: remain, running_charge: charge, plan: plan?.name,
+      });
+    }
+    if (path === '/api/seat/login' && req.method === 'POST') {
+      const b = await readBody(req);
+      const seat = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(+b.seat_no);
+      if (!seat) return send(res, 404, { error: '좌석 없음' });
+      return send(res, 200, startSession(seat.id, { member_login: b.member_login }));
+    }
+    if (path === '/api/seat/logout' && req.method === 'POST') {
+      const b = await readBody(req);
+      const seat = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(+b.seat_no);
+      if (!seat) return send(res, 404, { error: '좌석 없음' });
+      return send(res, 200, endSession(seat.id));
     }
     // 실시간 스트림
     if (path === '/api/events') {

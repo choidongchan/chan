@@ -45,8 +45,12 @@ npm install          # 의존성 설치 (없으면 내장 SQLite 사용)
 npm start            # 서버 실행 → http://localhost:8080
 ```
 
-브라우저에서 `http://localhost:8080` 접속 → 카운터 대시보드.
-처음 실행 시 예시 좌석/요금제가 자동 생성됩니다(seed).
+- **카운터 대시보드**: `http://localhost:8080` (직원 로그인 — 최초 `admin` / `admin1234`)
+- **좌석 PC 화면(키오스크)**: `http://localhost:8080/seat.html?seat=3` (3번 좌석)
+  - 회원 아이디로 로그인 → 남은시간 표시 → 시간 종료 시 자동 잠금
+- **좌석 PC 에이전트**(게임 감지): `node agent/agent.mjs --seat 3 --server http://<서버IP>:8080`
+
+처음 실행 시 예시 좌석/요금제/관리자 계정이 자동 생성됩니다(seed).
 
 ## 폴더 구조
 
