@@ -8,28 +8,52 @@
 </head>
 <body>
   <header>
-    <h1>WmCounter <span class="tag">1단계</span></h1>
+    <h1>WmCounter <span class="tag">개발판</span></h1>
+    <nav class="tabs">
+      <button class="tab active" data-tab="seats">좌석현황</button>
+      <button class="tab" data-tab="sales">매출</button>
+      <button class="tab" data-tab="games">유료게임</button>
+      <button class="tab" data-tab="members">회원</button>
+    </nav>
     <div class="summary" id="summary"></div>
   </header>
 
   <main>
-    <section class="seats-wrap">
-      <h2>좌석 현황</h2>
+    <!-- 좌석현황 -->
+    <section class="view active" id="view-seats">
+      <div class="view-head">
+        <h2>좌석 현황</h2>
+        <button onclick="openGoods()">상품 판매</button>
+      </div>
       <div id="seats" class="seats"></div>
     </section>
 
-    <aside class="side">
-      <h2>회원</h2>
-      <div class="members" id="members"></div>
-      <form id="memberForm">
+    <!-- 매출 -->
+    <section class="view" id="view-sales">
+      <div class="view-head"><h2>오늘 매출</h2><input type="date" id="salesDate" /></div>
+      <div id="salesReport"></div>
+    </section>
+
+    <!-- 유료게임 -->
+    <section class="view" id="view-games">
+      <div class="view-head"><h2>유료게임 사용 리포트</h2><input type="date" id="gamesDate" /></div>
+      <p class="note">※ 게임 감지·사용시간 측정 자료입니다. 실제 게임사 정산은 제휴/인증이 필요합니다(로드맵 4단계).</p>
+      <div id="gamesReport"></div>
+    </section>
+
+    <!-- 회원 -->
+    <section class="view" id="view-members">
+      <div class="view-head"><h2>회원 관리</h2></div>
+      <form id="memberForm" class="inline-form">
         <input name="login_id" placeholder="아이디" required />
         <input name="name" placeholder="이름" />
+        <input name="phone" placeholder="연락처" />
         <button type="submit">회원 등록</button>
       </form>
-    </aside>
+      <div id="membersTable"></div>
+    </section>
   </main>
 
-  <!-- 좌석 조작 팝업 -->
   <div id="modal" class="modal hidden">
     <div class="modal-box">
       <h3 id="modalTitle"></h3>

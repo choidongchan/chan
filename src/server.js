@@ -15,6 +15,12 @@ seedIfEmpty();
 
 // ---------- 실시간(SSE) ----------
 const clients = new Set();
+const online = new Map(); // seat_no -> 마지막 heartbeat(ms). 좌석 PC 접속 상태.
+const ONLINE_TTL = 60000;
+function isOnline(seatNo) {
+  const t = online.get(seatNo);
+  return t != null && Date.now() - t < ONLINE_TTL;
+}
 function broadcast() {
   const payload = `data: ${JSON.stringify(getState())}\n\n`;
   for (const res of clients) res.write(payload);
@@ -32,7 +38,7 @@ function getState() {
 
   const seatView = seats.map((seat) => {
     const s = sessionBySeat[seat.id];
-    if (!s) return { ...seat, status: 'empty' };
+    if (!s) return { ...seat, online: isOnline(seat.seat_no), status: 'empty' };
     const mins = elapsedMinutes(s.started_at);
     const plan = planById[s.rate_plan_id];
     let remainMinutes = null;
@@ -48,6 +54,7 @@ function getState() {
       .get(seat.id);
     return {
       ...seat,
+      online: isOnline(seat.seat_no),
       status: 'in_use',
       session: {
         id: s.id,
@@ -182,6 +189,42 @@ function reportGame(seatNo, { proc_name, game_code }) {
   return { detected: def.game_code };
 }
 
+// 상품 판매(음료/과자 등) 매출 기록
+function sellGoods({ name, amount, method = 'cash', member_id = null }) {
+  const won = +amount;
+  if (!won || won <= 0) throw new Error('금액 오류');
+  db.prepare('INSERT INTO sales (member_id, type, amount, method, created_at) VALUES (?,?,?,?,?)')
+    .run(member_id, 'goods', won, method, nowISO());
+  broadcast();
+  return { ok: true };
+}
+
+// 일별 매출 리포트
+function dailyReport(date) {
+  const d = date || nowISO().slice(0, 10);
+  const byType = db.prepare(
+    "SELECT type, COALESCE(SUM(amount),0) amount, COUNT(*) cnt FROM sales WHERE substr(created_at,1,10)=? GROUP BY type"
+  ).all(d);
+  const total = byType.reduce((a, r) => a + r.amount, 0);
+  const sessions = db.prepare(
+    "SELECT COUNT(*) cnt, COALESCE(SUM(amount),0) amount FROM sessions WHERE status='closed' AND substr(ended_at,1,10)=?"
+  ).get(d);
+  return { date: d, total, by_type: byType, sessions };
+}
+
+// 유료게임 사용 리포트 (게임사 정산의 기초 자료 — 4단계에서 실제 정산에 활용)
+function gamesReport(date) {
+  const d = date || nowISO().slice(0, 10);
+  const rows = db.prepare(
+    `SELECT game_name, provider, is_premium,
+            COUNT(*) sessions, COALESCE(SUM(minutes),0) minutes
+     FROM game_usage
+     WHERE substr(started_at,1,10)=?
+     GROUP BY game_code ORDER BY minutes DESC`
+  ).all(d);
+  return { date: d, games: rows };
+}
+
 // ---------- HTTP ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json' };
 
@@ -227,6 +270,26 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       return send(res, 200, reportGame(+b.seat_no, b));
     }
+    if (path === '/api/agent/heartbeat' && req.method === 'POST') {
+      const b = await readBody(req);
+      online.set(+b.seat_no, Date.now());
+      const seat = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(+b.seat_no);
+      const sess = seat && db.prepare("SELECT * FROM sessions WHERE seat_id=? AND status='active'").get(seat.id);
+      let remain = null;
+      if (sess && sess.kind === 'member' && sess.member_id) {
+        const m = db.prepare('SELECT * FROM members WHERE id=?').get(sess.member_id);
+        remain = m ? Math.max(0, m.balance_minutes - elapsedMinutes(sess.started_at)) : null;
+      }
+      return send(res, 200, { in_use: !!sess, kind: sess?.kind ?? null, remain_minutes: remain });
+    }
+    if (path === '/api/game-defs') return send(res, 200, db.prepare('SELECT * FROM game_defs').all());
+
+    const mGoods = path.match(/^\/api\/seats\/(\d+)\/goods$/);
+    if (mGoods && req.method === 'POST') return send(res, 200, sellGoods(await readBody(req)));
+    if (path === '/api/goods' && req.method === 'POST') return send(res, 200, sellGoods(await readBody(req)));
+
+    if (path === '/api/report/daily') return send(res, 200, dailyReport(url.searchParams.get('date')));
+    if (path === '/api/report/games') return send(res, 200, gamesReport(url.searchParams.get('date')));
 
     // 정적 파일
     let file = path === '/' ? '/index.html' : path;

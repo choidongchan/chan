@@ -18,7 +18,26 @@ h1 { font-size: 20px; margin: 0; }
 .summary { display: flex; gap: 18px; font-size: 14px; }
 .summary b { font-size: 18px; }
 .summary .sales b { color: var(--ok); }
-main { display: grid; grid-template-columns: 1fr 300px; gap: 18px; padding: 18px 22px; }
+.tabs { display: flex; gap: 6px; }
+.tab { background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 7px 14px; border-radius: 8px; }
+.tab.active { background: var(--use); color: #fff; border-color: var(--use); }
+main { padding: 18px 22px; }
+.view { display: none; }
+.view.active { display: block; }
+.view-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+.view-head h2 { margin: 0; }
+.note { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--panel); border-radius: 10px; overflow: hidden; }
+.tbl th, .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+.tbl th { color: var(--muted); font-weight: 600; }
+.tbl td.r, .tbl th.r { text-align: right; }
+.tbl .muted { color: var(--muted); text-align: center; }
+.bignum { font-size: 15px; margin-bottom: 12px; } .bignum b { font-size: 22px; color: var(--ok); }
+.badge { background: var(--prem); color: #111; font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 700; }
+.inline-form { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.inline-form input { flex: 1; min-width: 120px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; }
+.dot.on { background: var(--ok); } .dot.off { background: #555; }
 h2 { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
 .seats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .seat {
