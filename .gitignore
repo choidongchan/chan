@@ -2,3 +2,4 @@ node_modules/
 wmcounter.db
 wmcounter.db-*
 *.log
+scripts/*.png
