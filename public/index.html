@@ -8,16 +8,21 @@
 </head>
 <body>
   <header>
-    <h1>WmCounter <span class="tag">개발판</span></h1>
-    <nav class="tabs">
-      <button class="tab active" data-tab="seats">좌석현황</button>
-      <button class="tab" data-tab="sales">매출</button>
-      <button class="tab" data-tab="games">유료게임</button>
-      <button class="tab" data-tab="members">회원</button>
-      <button class="tab" data-tab="settings">설정</button>
-    </nav>
-    <div class="summary" id="summary"></div>
-    <div class="whoami" id="whoami"></div>
+    <div class="bar-top">
+      <div class="brand"><span class="logo">W</span><span>WmCounter</span><span class="tag">PRO</span></div>
+      <div class="clock" id="clock"></div>
+      <div class="whoami" id="whoami"></div>
+    </div>
+    <div class="bar-tools">
+      <nav class="tabs">
+        <button class="tab active" data-tab="seats">좌석현황</button>
+        <button class="tab" data-tab="sales">매출</button>
+        <button class="tab" data-tab="games">유료게임</button>
+        <button class="tab" data-tab="members">회원</button>
+        <button class="tab" data-tab="settings">설정</button>
+      </nav>
+      <div class="summary" id="summary"></div>
+    </div>
   </header>
 
   <main>

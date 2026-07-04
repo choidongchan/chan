@@ -63,24 +63,36 @@ function connect() {
 function renderSummary() {
   const s = STATE.summary;
   $('summary').innerHTML = `
-    <div>전체 <b>${s.total ?? 0}</b></div>
-    <div>사용중 <b style="color:var(--use)">${s.in_use ?? 0}</b></div>
-    <div>빈자리 <b>${s.empty ?? 0}</b></div>
-    <div class="sales">오늘매출 <b>${won(s.sales_today)}</b></div>`;
+    <div class="chip"><span>전체</span><b>${s.total ?? 0}</b></div>
+    <div class="chip use"><span>사용중</span><b>${s.in_use ?? 0}</b></div>
+    <div class="chip empty"><span>빈자리</span><b>${s.empty ?? 0}</b></div>
+    <div class="chip money"><span>오늘매출</span><b>${won(s.sales_today)}</b></div>`;
 }
+
+// 실시간 시계
+function tickClock() {
+  const d = new Date();
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const p = (n) => String(n).padStart(2, '0');
+  $('clock').innerHTML = `<small>${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})</small>${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+setInterval(tickClock, 1000); tickClock();
 
 function renderSeats() {
   $('seats').innerHTML = STATE.seats.map((seat) => {
     const dot = `<span class="dot ${seat.online ? 'on' : 'off'}" title="${seat.online ? 'PC 접속' : 'PC 꺼짐'}"></span>`;
     if (seat.status === 'in_use') {
       const ss = seat.session;
-      const line = ss.kind === 'member'
-        ? `회원 · 남은 ${ss.remain_minutes != null ? fmtMin(ss.remain_minutes) : '-'}`
-        : `게스트 · ${won(ss.running_charge)}`;
+      const isMember = ss.kind === 'member';
+      const low = isMember && ss.remain_minutes != null && ss.remain_minutes <= 5;
+      const cls = 'seat in_use' + (isMember ? ' member' : '') + (low ? ' warn' : '');
+      const line = isMember
+        ? `<b>${ss.member_id ? '회원' : '회원'}</b> · 남은 <b>${ss.remain_minutes != null ? fmtMin(ss.remain_minutes) : '-'}</b>`
+        : `<b>게스트</b> · <b>${won(ss.running_charge)}</b>`;
       const game = seat.game
         ? `<div class="game ${seat.game.is_premium ? 'prem' : ''}">🎮 ${seat.game.name}${seat.game.is_premium ? ' (유료)' : ''}</div>`
         : '';
-      return `<div class="seat in_use" onclick="openSeat(${seat.id})">
+      return `<div class="${cls}" onclick="openSeat(${seat.id})">
         <div class="no">${seat.seat_no}번 ${dot}</div><div class="zone">${seat.zone}</div>
         <div class="info">${line}<br>이용 ${fmtMin(ss.minutes)}</div>${game}</div>`;
     }
