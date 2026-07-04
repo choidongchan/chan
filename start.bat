@@ -9,9 +9,9 @@ echo.
 echo [1/2] 최신 버전 받는 중...
 git pull
 echo.
-echo [2/2] 서버 시작 중... (잠시만요)
+echo [2/2] 서버 시작 중... 잠시만 기다려주세요
 echo    브라우저에서 http://localhost:8080 접속하세요
-echo    (종료하려면 이 창에서 Ctrl+C 두 번 누르거나 창을 닫으세요)
+echo    종료하려면 이 창을 닫으면 됩니다
 echo.
 npm start
 echo.
