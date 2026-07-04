@@ -15,29 +15,31 @@ async function api(path, method = 'GET', body, token) {
 // --- 데모 데이터 만들기 ---
 const { token } = await api('/api/login', 'POST', { login: 'admin', password: 'admin1234' });
 await api('/api/settings', 'PUT', { shop_name: '체리 PC방 강남점', phone: '02-123-4567' }, token);
-// 회원 몇 명
-await api('/api/members', 'POST', { login_id: 'gamer01', name: '김철수', phone: '010-1111-2222' }, token);
-await api(`/api/members/1/charge`, 'POST', { minutes: 600 }, token); // test01 시간충전
-// 좌석 착석
-await api('/api/seats/1/start', 'POST', { rate_plan_id: 1 }, token);           // 게스트
-await api('/api/seats/2/start', 'POST', { rate_plan_id: 1, member_login: 'test01' }, token); // 회원
-await api('/api/seats/5/start', 'POST', { rate_plan_id: 2 }, token);           // 게스트 프리미엄
-await api('/api/seats/9/start', 'POST', { rate_plan_id: 1 }, token);
-await api('/api/seats/14/start', 'POST', { rate_plan_id: 1, member_login: 'gamer01' }, token);
-// 게임 감지(에이전트 흉내)
-await api('/api/agent/game', 'POST', { seat_no: 1, proc_name: 'LeagueClient.exe' });
-await api('/api/agent/game', 'POST', { seat_no: 2, proc_name: 'MapleStory.exe' });
-await api('/api/agent/game', 'POST', { seat_no: 5, proc_name: 'TslGame.exe' });
-await api('/api/agent/game', 'POST', { seat_no: 9, proc_name: 'dnf.exe' });
-// 좌석 온라인 표시
-for (const n of [1, 2, 5, 9, 14, 3, 4]) await api('/api/seat/status?seat_no=' + n);
-// 상품 판매
+
+const names = ['김철수', '이영희', '박민수', '최지훈', '정하늘', '강도현', '윤서연', '임재원'];
+for (let i = 0; i < names.length; i++) {
+  await api('/api/members', 'POST', { login_id: 'user' + (i + 1), name: names[i] }, token);
+}
+// 회원 시간 충전 (member id 2~9)
+for (let id = 1; id <= 9; id++) await api(`/api/members/${id}/charge`, 'POST', { minutes: 200 + id * 40 }, token);
+
+const games = ['LeagueClient.exe', 'MapleStory.exe', 'SUDDENATTACK.EXE', 'dnf.exe', 'LOSTARK.exe', 'VALORANT-Win64-Shipping.exe', 'TslGame.exe'];
+// 좌석 절반 정도 채우기 (짝수=게스트, 3의배수=회원)
+const occupy = [1, 2, 3, 5, 6, 8, 9, 11, 13, 14, 15, 17, 20, 22, 24, 25, 33, 34, 35, 41, 43, 45, 48, 52, 57];
+for (let i = 0; i < occupy.length; i++) {
+  const n = occupy[i];
+  const asMember = i % 3 === 0;
+  const body = asMember ? { rate_plan_id: 1, member_login: 'user' + ((i % 8) + 1) } : { rate_plan_id: 1 };
+  await api(`/api/seats/${n}/start`, 'POST', body, token);
+  await api('/api/agent/game', 'POST', { seat_no: n, proc_name: games[i % games.length] });
+  await api('/api/seat/status?seat_no=' + n); // 온라인
+}
 await api('/api/goods', 'POST', { name: '콜라', amount: 2000 }, token);
 await api('/api/goods', 'POST', { name: '컵라면', amount: 1500 }, token);
 
 // --- 스크린샷 ---
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 820 } });
+const ctx = await browser.newContext({ viewport: { width: 1680, height: 900 } });
 const page = await ctx.newPage();
 
 // 카운터 로그인 → 좌석현황
@@ -49,12 +51,12 @@ await page.waitForTimeout(1200);
 await page.screenshot({ path: 'scripts/1-seats.png' });
 
 // 매출 탭
-await page.click('.tab[data-tab="sales"]');
+await page.click('.m[data-tab="sales"]');
 await page.waitForTimeout(700);
 await page.screenshot({ path: 'scripts/2-sales.png' });
 
 // 유료게임 탭
-await page.click('.tab[data-tab="games"]');
+await page.click('.m[data-tab="games"]');
 await page.waitForTimeout(700);
 await page.screenshot({ path: 'scripts/3-games.png' });
 

@@ -9,30 +9,41 @@
 <body>
   <header>
     <div class="bar-top">
-      <div class="brand"><span class="logo">P</span><span>PLAYON</span><span class="tag">PRO</span></div>
-      <div class="clock" id="clock"></div>
-      <div class="whoami" id="whoami"></div>
-    </div>
-    <div class="bar-tools">
-      <nav class="tabs">
-        <button class="tab active" data-tab="seats">좌석현황</button>
-        <button class="tab" data-tab="sales">매출</button>
-        <button class="tab" data-tab="games">유료게임</button>
-        <button class="tab" data-tab="members">회원</button>
-        <button class="tab" data-tab="settings">설정</button>
+      <div class="brand"><span class="logo">P</span><span>PLAYON</span></div>
+      <nav class="menu">
+        <button class="m active" data-tab="seats">좌석현황</button>
+        <button class="m" data-tab="members">회원 관리</button>
+        <button class="m" data-tab="sales">매출</button>
+        <button class="m" data-tab="games">유료게임</button>
+        <button class="m" data-tab="settings">설정</button>
       </nav>
-      <div class="summary" id="summary"></div>
+      <div class="right">
+        <span class="clock" id="clock"></span>
+        <span class="whoami" id="whoami"></span>
+      </div>
+    </div>
+    <div class="bar-status">
+      <div class="util">
+        가동률 <b id="uUse">0</b> <span>/</span> <b id="uTotal">0</b> <span>/</span> <b class="pct" id="uPct">0%</b>
+      </div>
+      <div class="conn"><span class="live"></span> 매장 서버 연결됨</div>
+      <div class="toolbar">
+        <span id="salesToday">오늘매출 0원</span>
+        <button onclick="openGoods()">상품 판매</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <!-- 좌석현황 -->
+    <!-- 좌석현황: 배치도 -->
     <section class="view active" id="view-seats">
-      <div class="view-head">
-        <h2>좌석 현황</h2>
-        <button onclick="openGoods()">상품 판매</button>
+      <div class="legend">
+        <span><i class="lg empty"></i> 빈자리</span>
+        <span><i class="lg guest"></i> 비회원</span>
+        <span><i class="lg member"></i> 회원</span>
+        <span><i class="lg warn"></i> 시간부족</span>
       </div>
-      <div id="seats" class="seats"></div>
+      <div class="seatmap-wrap"><div id="seatmap" class="seatmap"></div></div>
     </section>
 
     <!-- 매출 -->
@@ -44,7 +55,7 @@
     <!-- 유료게임 -->
     <section class="view" id="view-games">
       <div class="view-head"><h2>유료게임 사용 리포트</h2><input type="date" id="gamesDate" /></div>
-      <p class="note">※ 게임 감지·사용시간 측정 자료입니다. 실제 게임사 정산은 제휴/인증이 필요합니다(로드맵 4단계).</p>
+      <p class="note">※ 게임 감지·사용시간 측정 자료입니다. 실제 게임사 정산은 제휴/인증이 필요합니다.</p>
       <div id="gamesReport"></div>
     </section>
 
@@ -69,7 +80,6 @@
         <input name="phone" placeholder="전화번호" />
         <button type="submit">저장</button>
       </form>
-
       <div class="view-head" style="margin-top:22px"><h2>요금제</h2></div>
       <div id="plansTable"></div>
       <form id="planForm" class="inline-form">
@@ -77,7 +87,6 @@
         <input name="won_per_hour" type="number" placeholder="시간당 요금(원)" required />
         <button type="submit">요금제 추가</button>
       </form>
-
       <div class="view-head" style="margin-top:22px"><h2>쿠폰</h2></div>
       <form id="couponForm" class="inline-form">
         <select name="kind"><option value="minutes">시간(분)</option><option value="cash">선불금(원)</option></select>
@@ -90,14 +99,10 @@
   </main>
 
   <div id="modal" class="modal hidden">
-    <div class="modal-box">
-      <h3 id="modalTitle"></h3>
-      <div id="modalBody"></div>
-      <button class="close" onclick="closeModal()">닫기</button>
-    </div>
+    <div class="modal-box"><h3 id="modalTitle"></h3><div id="modalBody"></div>
+      <button class="close" onclick="closeModal()">닫기</button></div>
   </div>
 
-  <!-- 로그인 -->
   <div id="login" class="modal">
     <div class="modal-box">
       <h3>카운터 로그인</h3>
@@ -106,7 +111,7 @@
         <div class="field"><label>비밀번호</label><input id="loginPw" type="password" placeholder="admin1234" /></div>
         <button style="width:100%">로그인</button>
       </form>
-      <p class="note" style="margin-top:10px">최초 계정: admin / admin1234 — 로그인 후 변경 권장</p>
+      <p class="note" style="margin-top:10px">최초 계정: admin / admin1234</p>
     </div>
   </div>
 

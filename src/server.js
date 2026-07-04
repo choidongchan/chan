@@ -44,9 +44,12 @@ function getState() {
     const plan = planById[s.rate_plan_id];
     let remainMinutes = null;
     let runningCharge = null;
+    let memberLogin = null, memberName = null;
     if (s.kind === 'member' && s.member_id) {
       const m = db.prepare('SELECT * FROM members WHERE id=?').get(s.member_id);
       remainMinutes = m ? Math.max(0, m.balance_minutes - mins) : null;
+      memberLogin = m?.login_id ?? null;
+      memberName = m?.name || m?.login_id || null;
     } else {
       runningCharge = calcCharge(plan, mins);
     }
@@ -61,6 +64,8 @@ function getState() {
         id: s.id,
         kind: s.kind,
         member_id: s.member_id,
+        member_login: memberLogin,
+        member_name: memberName,
         started_at: s.started_at,
         minutes: mins,
         plan_name: plan?.name,

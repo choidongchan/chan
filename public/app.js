@@ -36,9 +36,9 @@ window.logout = async function () {
 };
 
 // ---- 탭 전환 ----
-document.querySelectorAll('.tab').forEach((btn) => {
+document.querySelectorAll('.menu .m').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.menu .m').forEach((b) => b.classList.remove('active'));
     document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
     btn.classList.add('active');
     $('view-' + btn.dataset.tab).classList.add('active');
@@ -62,11 +62,11 @@ function connect() {
 
 function renderSummary() {
   const s = STATE.summary;
-  $('summary').innerHTML = `
-    <div class="chip"><span>전체</span><b>${s.total ?? 0}</b></div>
-    <div class="chip use"><span>사용중</span><b>${s.in_use ?? 0}</b></div>
-    <div class="chip empty"><span>빈자리</span><b>${s.empty ?? 0}</b></div>
-    <div class="chip money"><span>오늘매출</span><b>${won(s.sales_today)}</b></div>`;
+  const pct = s.total ? Math.round((s.in_use / s.total) * 1000) / 10 : 0;
+  $('uUse').textContent = s.in_use ?? 0;
+  $('uTotal').textContent = s.total ?? 0;
+  $('uPct').textContent = pct + '%';
+  $('salesToday').textContent = '오늘매출 ' + won(s.sales_today);
 }
 
 // 실시간 시계
@@ -78,29 +78,63 @@ function tickClock() {
 }
 setInterval(tickClock, 1000); tickClock();
 
+// 좌석 배치도 렌더링 (pos_x/pos_y 좌표로 절대 배치)
+const TILE_W = 116, TILE_H = 62, GAP_X = 10, GAP_Y = 10;
+const sn3 = (n) => String(n).padStart(3, '0');
+
 function renderSeats() {
-  $('seats').innerHTML = STATE.seats.map((seat) => {
-    const dot = `<span class="dot ${seat.online ? 'on' : 'off'}" title="${seat.online ? 'PC 접속' : 'PC 꺼짐'}"></span>`;
+  const map = $('seatmap');
+  let maxX = 0, maxY = 0;
+  const html = STATE.seats.map((seat) => {
+    maxX = Math.max(maxX, seat.pos_x); maxY = Math.max(maxY, seat.pos_y);
+    const left = seat.pos_x * (TILE_W + GAP_X);
+    const top = seat.pos_y * (TILE_H + GAP_Y);
+    const pos = `style="left:${left}px;top:${top}px"`;
     if (seat.status === 'in_use') {
       const ss = seat.session;
       const isMember = ss.kind === 'member';
       const low = isMember && ss.remain_minutes != null && ss.remain_minutes <= 5;
-      const cls = 'seat in_use' + (isMember ? ' member' : '') + (low ? ' warn' : '');
-      const line = isMember
-        ? `<b>${ss.member_id ? '회원' : '회원'}</b> · 남은 <b>${ss.remain_minutes != null ? fmtMin(ss.remain_minutes) : '-'}</b>`
-        : `<b>게스트</b> · <b>${won(ss.running_charge)}</b>`;
-      const game = seat.game
-        ? `<div class="game ${seat.game.is_premium ? 'prem' : ''}">🎮 ${seat.game.name}${seat.game.is_premium ? ' (유료)' : ''}</div>`
-        : '';
-      return `<div class="${cls}" onclick="openSeat(${seat.id})">
-        <div class="no">${seat.seat_no}번 ${dot}</div><div class="zone">${seat.zone}</div>
-        <div class="info">${line}<br>이용 ${fmtMin(ss.minutes)}</div>${game}</div>`;
+      const cls = 'seat ' + (low ? 'warn' : isMember ? 'member' : 'guest');
+      // 이름/번호
+      const who = isMember
+        ? `${ss.member_name || ss.member_login} <small>(${ss.member_id})</small>`
+        : `비회원 <small>(0000)</small>`;
+      // 타이머: 회원=남은시간 카운트다운, 게스트=이용시간 카운트업
+      const timeAttr = isMember
+        ? `data-zero="${Date.now() + (ss.remain_minutes ?? 0) * 60000}"`
+        : `data-start="${Date.parse(ss.started_at)}"`;
+      const icons = `<div class="icons"><i style="background:${isMember ? '#8f97ff' : '#7a5800'}"></i>${seat.game ? `<i style="background:${seat.game.is_premium ? '#ff5a5f' : '#33c481'}"></i>` : ''}</div>`;
+      const game = seat.game ? `<div class="g">${seat.game.name}${seat.game.is_premium ? ' ⭐' : ''}</div>` : '';
+      return `<div class="${cls}" ${pos} onclick="openSeat(${seat.id})">
+        <div class="sn">${sn3(seat.seat_no)}</div>${icons}
+        <div class="u">${who}</div>
+        <div class="t" ${timeAttr}>00:00</div>${game}</div>`;
     }
-    return `<div class="seat" onclick="openSeat(${seat.id})">
-      <div class="no">${seat.seat_no}번 ${dot}</div><div class="zone">${seat.zone}</div>
-      <div class="empty-label">빈자리</div></div>`;
+    return `<div class="seat" ${pos} onclick="openSeat(${seat.id})">
+      <div class="sn">${sn3(seat.seat_no)}</div>
+      <div class="x">✕</div></div>`;
   }).join('');
+  map.innerHTML = html;
+  map.style.width = (maxX + 1) * (TILE_W + GAP_X) + 'px';
+  map.style.height = (maxY + 1) * (TILE_H + GAP_Y) + 'px';
+  tickSeats();
 }
+
+// 좌석 타이머 1초 갱신
+function clockStr(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const p = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+function tickSeats() {
+  const now = Date.now();
+  document.querySelectorAll('#seatmap .t').forEach((el) => {
+    if (el.dataset.zero) el.textContent = clockStr((+el.dataset.zero - now) / 1000);
+    else if (el.dataset.start) el.textContent = clockStr((now - +el.dataset.start) / 1000);
+  });
+}
+setInterval(tickSeats, 1000);
 
 // ---- 매출 ----
 async function loadSales() {

@@ -26,10 +26,21 @@ export function nowISO() {
 export function seedIfEmpty() {
   const seatCount = db.prepare('SELECT COUNT(*) c FROM seats').get().c;
   if (seatCount === 0) {
+    // 매장 배치도처럼 좌석을 여러 "섬(블록)"으로 배치. pos_x/pos_y = 격자 좌표.
     const ins = db.prepare('INSERT INTO seats (seat_no, zone, pos_x, pos_y) VALUES (?,?,?,?)');
-    for (let i = 1; i <= 24; i++) {
-      const zone = i <= 6 ? '프리미엄' : '일반';
-      ins.run(i, zone, (i - 1) % 6, Math.floor((i - 1) / 6));
+    const blocks = [
+      { ox: 0, oy: 0, cols: 4, rows: 8, zone: '프리미엄' }, // 왼쪽 대형 섬
+      { ox: 5, oy: 0, cols: 2, rows: 6, zone: '일반' },     // 중앙 좌
+      { ox: 8, oy: 0, cols: 4, rows: 5, zone: '일반' },     // 중앙 우
+      { ox: 13, oy: 0, cols: 1, rows: 6, zone: '창가' },    // 우측 줄
+    ];
+    let n = 1;
+    for (const b of blocks) {
+      for (let r = 0; r < b.rows; r++) {
+        for (let c = 0; c < b.cols; c++) {
+          ins.run(n++, b.zone, b.ox + c, b.oy + r);
+        }
+      }
     }
   }
 
