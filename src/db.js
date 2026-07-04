@@ -58,9 +58,10 @@ export function seedIfEmpty() {
 
   const staffCount = db.prepare('SELECT COUNT(*) c FROM staff').get().c;
   if (staffCount === 0) {
-    // 기본 관리자 계정 — 최초 로그인 후 반드시 비밀번호를 변경하세요.
+    // 기본 관리자 계정 — 공개 배포 시 ADMIN_PW 환경변수로 비밀번호를 지정하세요.
+    const adminPw = process.env.ADMIN_PW || 'admin1234';
     db.prepare('INSERT INTO staff (login, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
-      .run('admin', '관리자', hashPassword('admin1234'), 'admin', nowISO());
+      .run('admin', '관리자', hashPassword(adminPw), 'admin', nowISO());
   }
 
   const hasShopName = db.prepare("SELECT COUNT(*) c FROM settings WHERE key='shop_name'").get().c;

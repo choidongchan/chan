@@ -1,0 +1,16 @@
+# PLAYON 자동 배포 설정 (Render.com)
+# 이 파일이 있으면, Render에 저장소를 한 번 연결한 뒤로는
+# 브랜치에 push할 때마다 자동으로 재배포됩니다. (CI/CD)
+services:
+  - type: web
+    name: playon
+    runtime: node
+    plan: free
+    branch: claude/wmcounter-program-ypjcww
+    buildCommand: npm install
+    startCommand: node run.mjs
+    autoDeploy: true
+    envVars:
+      # 공개 배포 시 관리자 비밀번호를 반드시 지정하세요. (Render 대시보드에서 값 입력)
+      - key: ADMIN_PW
+        sync: false
