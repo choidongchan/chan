@@ -56,6 +56,14 @@ npm start            # 서버 실행 → http://localhost:8080
 
 처음 실행 시 예시 좌석/요금제/관리자 계정이 자동 생성됩니다(seed).
 
+## 개발 → 배포 흐름 (Windows, 더블클릭)
+
+1. **`start.bat`** — 최신 버전 받고 서버 실행 (개발/미리보기)
+2. VS Code로 `chan` 폴더 열어 코드 수정
+3. **`push.bat`** — 수정사항을 git에 올리기 → (Render 연결 시) 자동 배포
+
+> 최초 1회: 첫 push 때 GitHub 로그인, 배포는 `DEPLOY.md` 참고(Render 연결).
+
 ## 폴더 구조
 
 ```
