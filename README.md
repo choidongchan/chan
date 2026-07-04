@@ -38,10 +38,14 @@
 
 ## 실행 방법 (1단계)
 
-전제: [Node.js](https://nodejs.org) 20 이상.
+전제: [Node.js](https://nodejs.org) 20 이상, [Git](https://git-scm.com).
 
+**가장 쉬운 방법 (Windows):** `chan` 폴더의 **`start.bat` 더블클릭**
+→ 최신 버전 자동 업데이트 + 서버 실행이 한 번에 됩니다.
+
+수동 실행:
 ```bash
-npm install          # 의존성 설치 (없으면 내장 SQLite 사용)
+git pull             # 최신 버전 받기
 npm start            # 서버 실행 → http://localhost:8080
 ```
 
