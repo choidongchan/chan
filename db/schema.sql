@@ -1,4 +1,4 @@
--- WmCounter DB 스키마 (1단계)
+-- PLAYON DB 스키마 (1단계)
 -- SQLite 기준. 추후 MySQL/MariaDB로 이관 가능하도록 표준 SQL 위주로 작성.
 
 -- 좌석

@@ -77,7 +77,7 @@ async function tick() {
   }
 }
 
-console.log(`WmCounter 에이전트 시작 — 좌석 ${SEAT_NO}, 서버 ${SERVER}`);
+console.log(`PLAYON 에이전트 시작 — 좌석 ${SEAT_NO}, 서버 ${SERVER}`);
 await loadDefs();
 setInterval(loadDefs, 5 * 60 * 1000);
 tick();

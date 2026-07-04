@@ -1,7 +1,7 @@
 {
-  "name": "wmcounter",
+  "name": "playon",
   "version": "0.1.0",
-  "description": "오픈 PC방 관리 프로그램 (게토 대체 목표) - 1단계 서버 + 카운터 대시보드",
+  "description": "PLAYON - PC방 관리 프로그램 (서버 + 카운터 대시보드 + 좌석 클라이언트)",
   "type": "module",
   "scripts": {
     "start": "node run.mjs"

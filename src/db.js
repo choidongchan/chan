@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { hashPassword } from './auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.WM_DB || join(__dirname, '..', 'wmcounter.db');
+const DB_PATH = process.env.WM_DB || join(__dirname, '..', 'playon.db');
 
 export const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL;');

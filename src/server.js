@@ -1,4 +1,4 @@
-// WmCounter 서버: REST API + 실시간(SSE) + 정적 파일(카운터 대시보드)
+// PLAYON 서버: REST API + 실시간(SSE) + 정적 파일(카운터 대시보드)
 // 의존성 없이 Node 내장 모듈만 사용.
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -468,5 +468,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`WmCounter 서버 실행: http://localhost:${PORT}`);
+  console.log(`PLAYON 서버 실행: http://localhost:${PORT}`);
 });
