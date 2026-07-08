@@ -97,7 +97,7 @@ function tickClock() {
 setInterval(tickClock, 1000); tickClock();
 
 // 좌석 배치도 렌더링 (pos_x/pos_y 좌표로 절대 배치)
-const TILE_W = 116, TILE_H = 62, GAP_X = 10, GAP_Y = 10;
+const TILE_W = 116, TILE_H = 74, GAP_X = 10, GAP_Y = 10;
 const sn3 = (n) => String(n).padStart(3, '0');
 
 function renderSeats() {

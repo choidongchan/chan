@@ -61,19 +61,19 @@ main { padding: 14px 20px 40px; }
 .seatmap { position: relative; }
 
 .seat {
-  position: absolute; width: 116px; height: 62px; border-radius: 8px;
+  position: absolute; width: 116px; height: 74px; border-radius: 8px;
   background: var(--empty); border: 1px solid var(--line); cursor: pointer;
-  padding: 6px 8px; overflow: hidden; transition: transform .1s, box-shadow .1s;
+  padding: 6px 8px 5px; overflow: hidden; transition: transform .1s, box-shadow .1s;
 }
 .seat:hover { transform: scale(1.04); box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 5; }
-.seat .sn { font-size: 12px; font-weight: 800; color: var(--muted); }
+.seat .sn { font-size: 12px; font-weight: 800; color: var(--muted); line-height: 1.1; }
 .seat .icons { position: absolute; top: 6px; right: 7px; display: flex; gap: 3px; }
 .seat .icons i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
 .seat .x { position: absolute; inset: 0; display: grid; place-items: center; color: #56617a; font-size: 20px; font-weight: 800; }
-.seat .u { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.seat .u { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; line-height: 1.15; }
 .seat .u small { opacity: .7; font-weight: 600; }
-.seat .t { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.seat .g { position: absolute; bottom: 5px; left: 8px; right: 8px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.seat .t { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 1px; }
+.seat .g { position: absolute; bottom: 5px; left: 8px; right: 8px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
 
 .seat.member { background: linear-gradient(160deg, var(--member), var(--member-2)); border-color: #7e86ff; color: #fff; }
 .seat.member .sn, .seat.member .u small { color: #dfe2ff; }
@@ -200,3 +200,49 @@ button.danger { background: var(--warn); }
 .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .btn-grid button { padding: 13px; font-size: 14px; }
 button.gray2 { background: var(--panel2); color: var(--ink); }
+
+/* ===== 모바일 대응 ===== */
+@media (max-width: 860px) {
+  .bar-top { flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
+  .brand { font-size: 16px; }
+  .right { margin-left: auto; gap: 8px; }
+  .clock { font-size: 12px; }
+  .clock small { margin-right: 4px; }
+  .whoami { font-size: 12px; }
+  /* 메뉴: 세로로 접히지 않게 가로 스크롤 */
+  .menu { order: 3; width: 100%; flex-wrap: nowrap; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; scrollbar-width: none; }
+  .menu::-webkit-scrollbar { display: none; }
+  .menu .m { flex: 0 0 auto; white-space: nowrap; font-size: 13px; padding: 7px 11px; }
+
+  .bar-status { flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; font-size: 12.5px; }
+  .toolbar { margin-left: 0; width: 100%; justify-content: space-between; gap: 8px; }
+  .toolbar button { padding: 8px 12px; }
+
+  main { padding: 10px 10px 30px; }
+  .legend { flex-wrap: wrap; gap: 7px 12px; font-size: 12px; }
+  .edit-btn { margin-left: auto; }
+  .seatmap-wrap { padding: 12px; -webkit-overflow-scrolling: touch; }
+
+  /* 팝업: 화면 꽉 채우기 */
+  .wc-popup { padding: 64px 8px 8px; }
+  .wc-window { width: 100%; height: calc(100vh - 74px); border-radius: 12px; }
+  .wc-body { padding: 14px; }
+  .wc-toolbar { gap: 8px; }
+  .wc-search { min-width: 0; flex: 1; }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .kiosk-cards, .prod-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* 모달: 폭 맞춤 */
+  .modal-box { width: calc(100vw - 32px); max-width: 380px; }
+  /* 넓은 표는 가로 스크롤 */
+  .wc-body .panel, .wc-body .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .wc-body > .psec > #membersTable, .wc-body > .psec > #historyTable,
+  .wc-body > .psec > #ordersTable, .wc-body > .psec > #logsTable,
+  .wc-body > .psec > #productsTable { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .wc-body .tbl { min-width: 460px; }
+}
+@media (max-width: 520px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+  .card .cv { font-size: 18px; }
+  .chart { padding: 16px 8px 12px; height: 160px; }
+}
