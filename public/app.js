@@ -222,7 +222,17 @@ async function loadSales() {
         <td>${p.product}</td><td class="r">${won(p.amount)}</td>
         <td><span class="pill blue">${p.type_label}</span></td><td>${fmtDT(p.created_at)}</td>
       </tr>`).join('') || '<tr><td colspan=7 class="muted">결제 내역 없음</td></tr>'}</tbody></table></div>`;
-  $('salesReport').innerHTML = cards + `<div class="sales-grid"><div>${pays}</div><div>${top}${cats}</div></div>`;
+  const trend = await api('/api/report/trend?days=7');
+  const maxT = Math.max(1, ...trend.map((t) => t.total));
+  const chart = `<div class="panel"><div class="ph">최근 7일 매출 추이</div>
+    <div class="chart">${trend.map((t) => {
+      const h = Math.round((t.total / maxT) * 120);
+      const isToday = t.date === trend[trend.length - 1].date;
+      return `<div class="bar-col"><div class="bar-val">${t.total ? won(t.total).replace('원', '') : ''}</div>
+        <div class="bar${isToday ? ' today' : ''}" style="height:${Math.max(2, h)}px" title="${t.date} ${won(t.total)}"></div>
+        <div class="bar-lbl">${t.date.slice(5)}</div></div>`;
+    }).join('')}</div></div>`;
+  $('salesReport').innerHTML = cards + chart + `<div class="sales-grid"><div>${pays}</div><div>${top}${cats}</div></div>`;
 }
 
 // ---- 유료게임 ----

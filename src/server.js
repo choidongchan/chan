@@ -467,6 +467,18 @@ function salesRich(period = 'day', date) {
   return { period, date: d, total, goods_total, seat_total, charge_total, user_count, prev_total, diff: total - prev_total, top_products, by_category, payments };
 }
 
+// 최근 N일 매출 추이 (그래프용)
+function salesTrend(days = 7) {
+  const today = new Date(nowISO().slice(0, 10) + 'T00:00:00Z').getTime();
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today - i * 86400000).toISOString().slice(0, 10);
+    const total = db.prepare("SELECT COALESCE(SUM(amount),0) t FROM sales WHERE substr(created_at,1,10)=?").get(d).t;
+    out.push({ date: d, total });
+  }
+  return out;
+}
+
 // 유료게임 사용 리포트 (게임사 정산의 기초 자료 — 4단계에서 실제 정산에 활용)
 function gamesReport(date) {
   const d = date || nowISO().slice(0, 10);
@@ -630,6 +642,7 @@ const server = http.createServer(async (req, res) => {
 
     if (path === '/api/report/daily') return send(res, 200, dailyReport(url.searchParams.get('date')));
     if (path === '/api/report/sales') return send(res, 200, salesRich(url.searchParams.get('period') || 'day', url.searchParams.get('date')));
+    if (path === '/api/report/trend') return send(res, 200, salesTrend(+(url.searchParams.get('days') || 7)));
     if (path === '/api/report/games') return send(res, 200, gamesReport(url.searchParams.get('date')));
 
     // 상품 / 주문

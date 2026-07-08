@@ -150,6 +150,13 @@ button.danger { background: var(--warn); }
 .panel { background: #fff; border: 1px solid #eef2f8; border-radius: 12px; overflow: hidden; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(30,40,80,.05); }
 .panel .ph { padding: 13px 16px; font-weight: 800; font-size: 14px; border-bottom: 1px solid #eef2f8; }
 .panel .tbl { box-shadow: none; border-radius: 0; }
+.chart { display: flex; align-items: flex-end; gap: 14px; padding: 22px 18px 16px; height: 200px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; height: 100%; }
+.bar { width: 68%; max-width: 46px; background: linear-gradient(180deg, #6b90ff, #3f6fff); border-radius: 6px 6px 0 0; transition: .2s; }
+.bar.today { background: linear-gradient(180deg, #ffb15c, #f59e0b); }
+.bar:hover { filter: brightness(1.08); }
+.bar-val { font-size: 11px; color: #7a869f; font-weight: 800; }
+.bar-lbl { font-size: 11.5px; color: #9aa6bd; font-weight: 600; }
 @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, 1fr); } .sales-grid { grid-template-columns: 1fr; } }
 
 /* 키오스크 관제 */
