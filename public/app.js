@@ -36,7 +36,14 @@ window.logout = async function () {
 };
 
 // ---- 메뉴: 좌석현황(다크 뷰) / 나머지(밝은 팝업) ----
-const POP_TITLES = { members: '회원 관리', products: '상품 관리', history: '이용내역', orders: '주문 내역', sales: '매출', games: '유료게임', kiosk: '키오스크 관제', settings: '설정' };
+const POP_TITLES = { members: '회원 관리', products: '상품 관리', history: '이용내역', orders: '주문 내역', sales: '매출', games: '유료게임', logs: '시스템 로그', kiosk: '키오스크 관제', settings: '설정' };
+async function loadLogs() {
+  const rows = (await api('/api/logs')).map((l) => `<tr>
+      <td>${fmtDT(l.ts)}</td><td><span class="pill blue">${l.actor}</span></td>
+      <td><b>${l.action}</b></td><td>${l.detail || ''}</td></tr>`).join('');
+  $('logsTable').innerHTML = `<table class="tbl"><thead><tr><th>시각</th><th>담당</th><th>동작</th><th>상세</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=4 class="muted">로그 없음</td></tr>'}</tbody></table>`;
+}
 window.kioskAction = (name) => alert(`[${name}] 요청을 키오스크로 전송했습니다.\n(실제 키오스크 연동 시 원격 실행됩니다)`);
 document.querySelectorAll('.menu .m').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -51,7 +58,7 @@ function openWcPop(pop) {
   document.querySelectorAll('.psec').forEach((s) => s.classList.remove('active'));
   $('p-' + pop).classList.add('active');
   $('wcpop').classList.remove('hidden');
-  ({ members: loadMembers, products: loadProducts, history: loadHistory, orders: loadOrders, sales: loadSales, games: loadGames, settings: loadSettings }[pop])?.();
+  ({ members: loadMembers, products: loadProducts, history: loadHistory, orders: loadOrders, sales: loadSales, games: loadGames, logs: loadLogs, settings: loadSettings }[pop])?.();
 }
 function closeWcPop() {
   $('wcpop').classList.add('hidden');

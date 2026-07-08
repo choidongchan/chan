@@ -113,6 +113,15 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- 시스템 로그(운영 기록)
+CREATE TABLE IF NOT EXISTS logs (
+  id     INTEGER PRIMARY KEY,
+  ts     TEXT NOT NULL,
+  actor  TEXT,
+  action TEXT NOT NULL,
+  detail TEXT
+);
+
 -- 판매 상품(음료/과자/이용권 등)
 CREATE TABLE IF NOT EXISTS products (
   id        INTEGER PRIMARY KEY,

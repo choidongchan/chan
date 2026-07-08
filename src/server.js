@@ -27,6 +27,12 @@ function broadcast() {
   for (const res of clients) res.write(payload);
 }
 
+// ---------- 운영 로그 ----------
+let currentActor = 'system';
+function writeLog(action, detail = '') {
+  try { db.prepare('INSERT INTO logs (ts, actor, action, detail) VALUES (?,?,?,?)').run(nowISO(), currentActor, action, detail); } catch { }
+}
+
 // ---------- 조회 로직 ----------
 function getState() {
   const plans = db.prepare('SELECT * FROM rate_plans').all();
@@ -112,6 +118,7 @@ function startSession(seatId, { member_login, rate_plan_id } = {}) {
     .prepare('INSERT INTO sessions (seat_id, member_id, rate_plan_id, kind, started_at, status) VALUES (?,?,?,?,?,?)')
     .run(seatId, member?.id ?? null, planId, member ? 'member' : 'guest', nowISO(), 'active');
   if (member) db.prepare('UPDATE members SET last_visit_at=? WHERE id=?').run(nowISO(), member.id);
+  writeLog('착석', `${seat.seat_no}번 · ${member ? '회원 ' + member.login_id : '게스트'}`);
   broadcast();
   return { session_id: info.lastInsertRowid };
 }
@@ -143,9 +150,12 @@ function endSession(seatId) {
     db.prepare('INSERT INTO sales (session_id, member_id, type, amount, method, created_at) VALUES (?,?,?,?,?,?)')
       .run(s.id, s.member_id ?? null, 'seat', amount, 'cash', end);
   }
+  const seatNo = db.prepare('SELECT seat_no FROM seats WHERE id=?').get(s.seat_id)?.seat_no;
+  writeLog('이용종료/정산', `${seatNo}번 · ${fmtWon(amount)} · ${mins}분`);
   broadcast();
   return { amount, minutes: mins, session_id: s.id };
 }
+function fmtWon(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
 
 // 좌석의 활성 세션에 시간 추가(회원 잔여시간 충전)
 function addTime(seatId, minutes) {
@@ -153,6 +163,8 @@ function addTime(seatId, minutes) {
   if (!s) throw new Error('사용중인 좌석이 아닙니다');
   if (s.kind !== 'member' || !s.member_id) throw new Error('회원 좌석만 시간충전이 가능합니다');
   db.prepare('UPDATE members SET balance_minutes = balance_minutes + ? WHERE id=?').run(+minutes, s.member_id);
+  const seatNo = db.prepare('SELECT seat_no FROM seats WHERE id=?').get(seatId)?.seat_no;
+  writeLog('시간충전', `${seatNo}번 · +${minutes}분`);
   broadcast();
   return { ok: true };
 }
@@ -167,6 +179,8 @@ function moveSeat(fromSeatId, toSeatNo) {
   if (busy) throw new Error('대상 좌석이 이미 사용중입니다');
   db.prepare('UPDATE sessions SET seat_id=? WHERE id=?').run(to.id, s.id);
   db.prepare('UPDATE game_usage SET seat_id=? WHERE seat_id=? AND ended_at IS NULL').run(to.id, fromSeatId);
+  const fromNo = db.prepare('SELECT seat_no FROM seats WHERE id=?').get(fromSeatId)?.seat_no;
+  writeLog('자리이동', `${fromNo}번 → ${to.seat_no}번`);
   broadcast();
   return { ok: true };
 }
@@ -175,6 +189,7 @@ function createMember({ login_id, name, phone, nickname, is_adult }) {
   if (!login_id) throw new Error('아이디 필요');
   db.prepare('INSERT INTO members (login_id, name, phone, nickname, is_adult, created_at) VALUES (?,?,?,?,?,?)')
     .run(login_id, name ?? '', phone ?? '', nickname ?? '', is_adult == null ? 1 : (is_adult ? 1 : 0), nowISO());
+  writeLog('회원등록', login_id);
   return db.prepare('SELECT * FROM members WHERE login_id=?').get(login_id);
 }
 
@@ -235,6 +250,7 @@ function sellGoods({ name, amount, method = 'cash', member_id = null }) {
   if (!won || won <= 0) throw new Error('금액 오류');
   db.prepare('INSERT INTO sales (member_id, type, amount, method, name, created_at) VALUES (?,?,?,?,?,?)')
     .run(member_id, 'goods', won, method, name ?? '상품', nowISO());
+  writeLog('상품판매', `${name ?? '상품'} · ${fmtWon(won)}`);
   broadcast();
   return { ok: true };
 }
@@ -481,6 +497,7 @@ const server = http.createServer(async (req, res) => {
         return send(res, 401, { error: '아이디 또는 비밀번호가 틀립니다' });
       }
       const token = createToken(staff);
+      currentActor = staff.login; writeLog('로그인');
       return send(res, 200, { token, name: staff.name, role: staff.role, login: staff.login });
     }
     if (path === '/api/logout' && req.method === 'POST') {
@@ -491,6 +508,7 @@ const server = http.createServer(async (req, res) => {
     // 인증 확인: 조회(GET)와 에이전트 엔드포인트를 제외한 변경 작업은 로그인 필요
     const sess = getSession((req.headers.authorization || '').replace('Bearer ', ''));
     const isAgent = path.startsWith('/api/agent/') || path.startsWith('/api/seat/');
+    currentActor = sess?.login || (isAgent ? 'agent' : 'system');
     const isMutation = req.method !== 'GET' && path.startsWith('/api/');
     if (isMutation && !isAgent && !sess) {
       return send(res, 401, { error: '로그인이 필요합니다' });
@@ -556,6 +574,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { member: m, sessions, sales });
     }
     if (path === '/api/history') return send(res, 200, historyList());
+    if (path === '/api/logs') return send(res, 200, db.prepare('SELECT * FROM logs ORDER BY id DESC LIMIT 300').all());
 
     const mStart = path.match(/^\/api\/seats\/(\d+)\/start$/);
     if (mStart && req.method === 'POST') return send(res, 200, startSession(+mStart[1], await readBody(req)));
