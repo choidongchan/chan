@@ -15,6 +15,7 @@ async function api(path, method = 'GET', body, token) {
 // --- 데모 데이터 만들기 ---
 const { token } = await api('/api/login', 'POST', { login: 'admin', password: 'admin1234' });
 await api('/api/settings', 'PUT', { shop_name: '체리 PC방 강남점', phone: '02-123-4567' }, token);
+await api('/api/settings', 'PUT', { zones: JSON.stringify([{ label: '흡연실', x: 8, y: 6, w: 4, h: 2 }, { label: '카운터', x: 5, y: 7, w: 3, h: 2 }]) }, token);
 
 const names = ['김철수', '이영희', '박민수', '최지훈', '정하늘', '강도현', '윤서연', '임재원'];
 const nicks = ['불꽃저격수', '초코라떼', '한밤의질주', '슈퍼콤보', '하늘구름', '도현짱', '서연공주', '재원고수'];
