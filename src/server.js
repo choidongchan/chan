@@ -147,6 +147,30 @@ function endSession(seatId) {
   return { amount, minutes: mins, session_id: s.id };
 }
 
+// 좌석의 활성 세션에 시간 추가(회원 잔여시간 충전)
+function addTime(seatId, minutes) {
+  const s = db.prepare("SELECT * FROM sessions WHERE seat_id=? AND status='active'").get(seatId);
+  if (!s) throw new Error('사용중인 좌석이 아닙니다');
+  if (s.kind !== 'member' || !s.member_id) throw new Error('회원 좌석만 시간충전이 가능합니다');
+  db.prepare('UPDATE members SET balance_minutes = balance_minutes + ? WHERE id=?').run(+minutes, s.member_id);
+  broadcast();
+  return { ok: true };
+}
+
+// 자리 이동 (활성 세션을 빈 좌석으로 옮김)
+function moveSeat(fromSeatId, toSeatNo) {
+  const to = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(+toSeatNo);
+  if (!to) throw new Error('대상 좌석 없음');
+  const s = db.prepare("SELECT * FROM sessions WHERE seat_id=? AND status='active'").get(fromSeatId);
+  if (!s) throw new Error('사용중인 좌석이 아닙니다');
+  const busy = db.prepare("SELECT 1 FROM sessions WHERE seat_id=? AND status='active'").get(to.id);
+  if (busy) throw new Error('대상 좌석이 이미 사용중입니다');
+  db.prepare('UPDATE sessions SET seat_id=? WHERE id=?').run(to.id, s.id);
+  db.prepare('UPDATE game_usage SET seat_id=? WHERE seat_id=? AND ended_at IS NULL').run(to.id, fromSeatId);
+  broadcast();
+  return { ok: true };
+}
+
 function createMember({ login_id, name, phone, nickname, is_adult }) {
   if (!login_id) throw new Error('아이디 필요');
   db.prepare('INSERT INTO members (login_id, name, phone, nickname, is_adult, created_at) VALUES (?,?,?,?,?,?)')
@@ -501,6 +525,10 @@ const server = http.createServer(async (req, res) => {
     if (mStart && req.method === 'POST') return send(res, 200, startSession(+mStart[1], await readBody(req)));
     const mEnd = path.match(/^\/api\/seats\/(\d+)\/end$/);
     if (mEnd && req.method === 'POST') return send(res, 200, endSession(+mEnd[1]));
+    const mAdd = path.match(/^\/api\/seats\/(\d+)\/addtime$/);
+    if (mAdd && req.method === 'POST') return send(res, 200, addTime(+mAdd[1], (await readBody(req)).minutes));
+    const mMove = path.match(/^\/api\/seats\/(\d+)\/move$/);
+    if (mMove && req.method === 'POST') return send(res, 200, moveSeat(+mMove[1], (await readBody(req)).to_seat_no));
     const mChg = path.match(/^\/api\/members\/(\d+)\/charge$/);
     if (mChg && req.method === 'POST') return send(res, 200, chargeMember(+mChg[1], await readBody(req)));
 

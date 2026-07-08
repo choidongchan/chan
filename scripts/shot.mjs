@@ -53,6 +53,13 @@ await page.click('#loginForm button');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: 'scripts/1-seats.png' });
 
+// 좌석 클릭 상세 팝업
+await page.click('#seatmap .seat.member');
+await page.waitForTimeout(400);
+await page.screenshot({ path: 'scripts/1b-seatpopup.png' });
+await page.click('#modal .close');
+await page.waitForTimeout(200);
+
 // 회원 관리 팝업
 await page.click('.m[data-pop="members"]');
 await page.waitForTimeout(700);

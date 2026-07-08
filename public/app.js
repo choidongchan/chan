@@ -285,21 +285,29 @@ async function loadOrders() {
     <tbody>${rows || '<tr><td colspan=7 class="muted">주문 없음</td></tr>'}</tbody></table>`;
 }
 
-// ---- 좌석 팝업 ----
+// ---- 좌석 클릭 상세 팝업 (충전/이동/정산/착석) ----
 window.openSeat = function (seatId) {
   const seat = STATE.seats.find((s) => s.id === seatId);
-  $('modalTitle').textContent = `${seat.seat_no}번 좌석 (${seat.zone})`;
+  $('modalTitle').textContent = `${seat.seat_no}번 좌석 · ${seat.zone}`;
   const body = $('modalBody');
   if (seat.status === 'in_use') {
     const ss = seat.session;
+    const isMember = ss.kind === 'member';
     body.innerHTML = `
-      <div class="row">상태: <b>사용중</b> (${ss.kind === 'member' ? '회원' : '게스트'})</div>
-      <div class="row">이용시간: <b>${fmtMin(ss.minutes)}</b></div>
-      <div class="row">요금제: ${ss.plan_name || '-'}</div>
-      ${ss.kind === 'member' ? `<div class="row">남은시간: ${ss.remain_minutes != null ? fmtMin(ss.remain_minutes) : '-'}</div>`
-        : `<div class="row">현재요금: <b>${won(ss.running_charge)}</b></div>`}
-      ${seat.game ? `<div class="row">실행게임: ${seat.game.name}${seat.game.is_premium ? ' <b style="color:var(--prem)">(유료)</b>' : ''}</div>` : ''}
-      <button class="danger" style="width:100%;margin-top:10px" onclick="endSeat(${seatId})">이용 종료 / 정산</button>`;
+      <div class="seat-detail">
+        <div class="sd-row"><span>상태</span><b>${isMember ? `회원 · ${ss.member_name || ss.member_login}` : '비회원(게스트)'}</b></div>
+        <div class="sd-row"><span>이용시간</span><b>${fmtMin(ss.minutes)}</b></div>
+        <div class="sd-row"><span>요금제</span><b>${ss.plan_name || '-'}</b></div>
+        ${isMember ? `<div class="sd-row"><span>남은시간</span><b>${ss.remain_minutes != null ? fmtMin(ss.remain_minutes) : '-'}</b></div>`
+          : `<div class="sd-row"><span>현재요금</span><b>${won(ss.running_charge)}</b></div>`}
+        ${seat.game ? `<div class="sd-row"><span>실행게임</span><b>${seat.game.name}${seat.game.is_premium ? ' (유료)' : ''}</b></div>` : ''}
+      </div>
+      <div class="btn-grid">
+        ${isMember ? `<button onclick="addTimeSeat(${seatId})">⏱ 시간충전</button>` : `<button onclick="chargeGuest(${seatId})">💳 결제</button>`}
+        <button class="gray2" onclick="moveSeatUI(${seatId})">↔ 자리이동</button>
+        <button class="gray2" onclick="openGoodsFor(${seat.seat_no})">🛒 상품판매</button>
+        <button class="danger" onclick="endSeat(${seatId})">■ 종료/정산</button>
+      </div>`;
   } else {
     const opts = STATE.plans.map((p) => `<option value="${p.id}">${p.name} (${p.won_per_hour}원/시간)</option>`).join('');
     body.innerHTML = `
@@ -309,6 +317,25 @@ window.openSeat = function (seatId) {
   }
   $('modal').classList.remove('hidden');
 };
+window.addTimeSeat = async function (seatId) {
+  const min = prompt('충전할 시간(분)을 입력하세요', '60');
+  if (min == null) return;
+  try { await api(`/api/seats/${seatId}/addtime`, 'POST', { minutes: +min }); closeModal(); }
+  catch (e) { alert(e.message); }
+};
+window.chargeGuest = async function (seatId) {
+  const amt = prompt('결제 금액(원)을 입력하세요', '5000');
+  if (amt == null) return;
+  try { await api('/api/goods', 'POST', { name: 'PC 선불결제', amount: +amt }); closeModal(); alert('결제 등록됨'); }
+  catch (e) { alert(e.message); }
+};
+window.moveSeatUI = async function (seatId) {
+  const to = prompt('이동할 빈 좌석 번호를 입력하세요');
+  if (to == null) return;
+  try { await api(`/api/seats/${seatId}/move`, 'POST', { to_seat_no: +to }); closeModal(); }
+  catch (e) { alert(e.message); }
+};
+window.openGoodsFor = function (seatNo) { closeModal(); openGoods(); };
 window.closeModal = () => $('modal').classList.add('hidden');
 
 window.startSeat = async function (seatId) {
