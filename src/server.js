@@ -541,8 +541,62 @@ function gamesReport(date) {
   return { date: d, games: rows };
 }
 
+// ---------- 체험(데모) ----------
+function ensureDemoStaff() {
+  let s = db.prepare("SELECT * FROM staff WHERE login='demo'").get();
+  if (!s) {
+    db.prepare('INSERT INTO staff (login, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
+      .run('demo', '체험', hashPassword('demo'), 'admin', nowISO());
+    s = db.prepare("SELECT * FROM staff WHERE login='demo'").get();
+  }
+  return s;
+}
+function demoSeed() {
+  const active = db.prepare("SELECT COUNT(*) c FROM sessions WHERE status='active'").get().c;
+  if (active >= 25) { broadcast(); return { ok: true, already: true }; }
+  currentActor = 'demo';
+  // 회원
+  const mlist = [['gamer1', '김철수', '불꽃저격수'], ['gamer2', '이영희', '초코라떼'], ['gamer3', '박민수', '한밤의질주'],
+    ['gamer4', '최지훈', '슈퍼콤보'], ['gamer5', '정하늘', '하늘구름'], ['gamer6', '강도현', '도현짱'],
+    ['gamer7', '윤서연', '서연공주'], ['gamer8', '임재원', '재원고수']];
+  for (const [lg, nm, nk] of mlist) {
+    if (!db.prepare('SELECT 1 FROM members WHERE login_id=?').get(lg))
+      db.prepare('INSERT INTO members (login_id, name, nickname, phone, balance_minutes, created_at) VALUES (?,?,?,?,?,?)')
+        .run(lg, nm, nk, '010-1234-' + (1000 + mlist.findIndex((x) => x[0] === lg)), 400, nowISO());
+  }
+  const members = db.prepare("SELECT * FROM members WHERE login_id LIKE 'gamer%'").all();
+  const planId = (db.prepare('SELECT id FROM rate_plans WHERE is_default=1').get() || db.prepare('SELECT id FROM rate_plans LIMIT 1').get()).id;
+  const seats = db.prepare('SELECT * FROM seats ORDER BY seat_no').all();
+  const target = Math.floor(seats.length * 0.7);
+  const games = [['lol', '리그 오브 레전드', 'RIOT', 1], ['maple', '메이플스토리', '넥슨', 1], ['sudden', '서든어택', '넥슨', 1],
+    ['dnf', '던전앤파이터', '넥슨', 1], ['valorant', '발로란트', 'RIOT', 0], ['pubg', '배틀그라운드', '크래프톤', 0], ['lostark', '로스트아크', '스마일게이트', 1]];
+  for (let i = 0; i < target; i++) {
+    const seat = seats[i];
+    if (db.prepare("SELECT 1 FROM sessions WHERE seat_id=? AND status='active'").get(seat.id)) continue;
+    const isMember = i % 3 === 0;
+    const mem = isMember ? members[i % members.length] : null;
+    const ago = 5 + (i * 13) % 110;
+    const started = new Date(Date.now() - ago * 60000).toISOString();
+    db.prepare("INSERT INTO sessions (seat_id, member_id, rate_plan_id, kind, started_at, status) VALUES (?,?,?,?,?, 'active')")
+      .run(seat.id, mem ? mem.id : null, planId, mem ? 'member' : 'guest', started);
+    if (i % 5 !== 0) { const g = games[i % games.length]; db.prepare('INSERT INTO game_usage (seat_id, game_code, game_name, provider, is_premium, started_at) VALUES (?,?,?,?,?,?)').run(seat.id, g[0], g[1], g[2], g[3], started); }
+    online.set(seat.seat_no, Date.now());
+  }
+  // 예약 2건
+  for (const idx of [target, target + 2]) {
+    const seat = seats[idx];
+    if (seat) db.prepare('INSERT INTO reservations (seat_id, name, phone, created_at, active) VALUES (?,?,?,?,1)').run(seat.id, '예약손님', '010-0000-0000', nowISO());
+  }
+  // 매출(상품)
+  for (const [nm, amt] of [['콜라', 2000], ['컵라면', 1500], ['핫바', 1800], ['치킨너겟', 5000], ['사이다', 2000], ['콜라', 2000], ['생수 500ml', 1000], ['컵라면', 1500]])
+    db.prepare("INSERT INTO sales (type, amount, method, name, created_at) VALUES ('goods',?, 'cash', ?, ?)").run(amt, nm, nowISO());
+  putSettings({ notice: '🎉 오픈 이벤트! 오늘 22시까지 전 좌석 요금 20% 할인', zones: JSON.stringify([{ label: '흡연실', x: 8, y: 6, w: 4, h: 2 }, { label: '카운터', x: 5, y: 7, w: 3, h: 2 }]) });
+  broadcast();
+  return { ok: true };
+}
+
 // ---------- HTTP ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 
 function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': type });
@@ -576,6 +630,15 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/logout' && req.method === 'POST') {
       destroyToken((req.headers.authorization || '').replace('Bearer ', ''));
       return send(res, 200, { ok: true });
+    }
+    // 체험하기(데모): test 계정 자동 로그인 + 70% 좌석 채우기 (토큰 불필요)
+    if (path === '/api/demo/login' && req.method === 'POST') {
+      const staff = ensureDemoStaff();
+      const token = createToken(staff);
+      return send(res, 200, { token, name: staff.name, role: staff.role, login: staff.login });
+    }
+    if (path === '/api/demo/seed' && req.method === 'POST') {
+      return send(res, 200, demoSeed());
     }
 
     // 인증 확인: 조회(GET)와 에이전트 엔드포인트를 제외한 변경 작업은 로그인 필요

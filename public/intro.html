@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PLAYON — PC방 관리 프로그램 소개</title>
+  <meta name="description" content="좌석 관리 · 시간 과금 · 회원 · 매출 · 유료게임까지. 웹으로 어디서나 관리하는 차세대 PC방 관리 프로그램 PLAYON." />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0e1420; --bg2: #141c2b; --card: #1a2334; --line: #26324a;
+      --txt: #eaf0fa; --muted: #93a2bd; --accent: #4b6bff; --accent2: #6b74ec;
+      --green: #2f9e6a; --orange: #e0a13c; --purple: #6b74ec;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      background: var(--bg); color: var(--txt); line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* 상단 바 */
+    .topbar {
+      position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px);
+      background: rgba(14,20,32,.82); border-bottom: 1px solid var(--line);
+    }
+    .topbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: .5px; }
+    .logo { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #4b6bff, #6b74ec);
+      display: grid; place-items: center; font-weight: 900; color: #fff; }
+    .btn {
+      display: inline-block; padding: 11px 22px; border-radius: 10px; font-weight: 700; font-size: 15px;
+      background: linear-gradient(135deg, #4b6bff, #6b74ec); color: #fff; border: none; cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease; box-shadow: 0 6px 18px rgba(75,107,255,.35);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(75,107,255,.5); }
+    .btn.ghost { background: transparent; border: 1px solid var(--line); box-shadow: none; color: var(--txt); }
+    .btn.lg { padding: 15px 34px; font-size: 17px; }
+
+    /* 히어로 */
+    .hero { padding: 76px 0 40px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before {
+      content: ''; position: absolute; inset: -40% 0 auto 0; height: 520px;
+      background: radial-gradient(600px 300px at 50% 0, rgba(75,107,255,.28), transparent 70%); z-index: 0;
+    }
+    .hero .wrap { position: relative; z-index: 1; }
+    .badge {
+      display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      color: #b9c6ff; background: rgba(75,107,255,.14); border: 1px solid rgba(75,107,255,.35); margin-bottom: 22px;
+    }
+    .hero h1 { font-size: 52px; font-weight: 900; letter-spacing: -1px; line-height: 1.15; }
+    .hero h1 .hl { background: linear-gradient(120deg, #6b8bff, #a78bff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p.sub { margin: 22px auto 0; max-width: 640px; font-size: 19px; color: var(--muted); }
+    .cta-row { margin-top: 34px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hint { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+    /* 히어로 스크린샷 */
+    .shot-hero { margin: 46px auto 0; max-width: 1040px; position: relative; z-index: 1; }
+    .browser {
+      border-radius: 14px; overflow: hidden; border: 1px solid var(--line);
+      box-shadow: 0 30px 80px rgba(0,0,0,.55); background: var(--card);
+    }
+    .browser .bar { height: 38px; background: #0c1220; display: flex; align-items: center; gap: 7px; padding: 0 14px; border-bottom: 1px solid var(--line); }
+    .browser .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .browser .dot.r { background: #ff5f56; } .browser .dot.y { background: #ffbd2e; } .browser .dot.g { background: #27c93f; }
+    .browser .url { margin-left: 14px; font-size: 12px; color: var(--muted); background: #131b2b; padding: 4px 12px; border-radius: 6px; }
+
+    /* 통계 스트립 */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 56px 0; }
+    .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; text-align: center; }
+    .stat .n { font-size: 30px; font-weight: 900; color: #fff; }
+    .stat .l { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    /* 섹션 공통 */
+    section { padding: 40px 0; }
+    .sec-head { text-align: center; max-width: 680px; margin: 0 auto 44px; }
+    .sec-head .tag { color: var(--accent); font-weight: 800; font-size: 14px; letter-spacing: 1px; }
+    .sec-head h2 { font-size: 36px; font-weight: 900; margin-top: 8px; letter-spacing: -.5px; }
+    .sec-head p { color: var(--muted); font-size: 17px; margin-top: 12px; }
+
+    /* 기능 아이콘 그리드 */
+    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 26px;
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    .feat:hover { transform: translateY(-4px); border-color: rgba(75,107,255,.5); }
+    .feat .ico { font-size: 30px; margin-bottom: 12px; }
+    .feat h3 { font-size: 18px; font-weight: 800; }
+    .feat p { color: var(--muted); font-size: 15px; margin-top: 8px; }
+
+    /* 캡쳐 쇼케이스 (교차 배치) */
+    .show { display: grid; grid-template-columns: 1fr 1fr; gap: 42px; align-items: center; margin: 30px 0; }
+    .show.rev .txt { order: 2; }
+    .show .txt .k { color: var(--accent); font-weight: 800; font-size: 14px; letter-spacing: .5px; }
+    .show .txt h3 { font-size: 28px; font-weight: 900; margin: 8px 0 14px; letter-spacing: -.5px; }
+    .show .txt p { color: var(--muted); font-size: 16px; }
+    .show .txt ul { list-style: none; margin-top: 16px; }
+    .show .txt li { padding: 7px 0 7px 28px; position: relative; color: #cdd7ea; }
+    .show .txt li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 900; }
+    .show .cap { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+    .show .cap img { transition: transform .3s ease; }
+    .show .cap:hover img { transform: scale(1.02); }
+
+    /* 갤러리 */
+    .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .gcard { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--card); }
+    .gcard .cap-t { padding: 12px 16px; font-weight: 700; font-size: 15px; border-top: 1px solid var(--line); }
+    .gcard .cap-t small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; margin-top: 2px; }
+
+    /* 마무리 CTA */
+    .final { text-align: center; padding: 70px 0 40px; }
+    .final .box {
+      background: linear-gradient(135deg, rgba(75,107,255,.16), rgba(107,116,236,.10));
+      border: 1px solid rgba(75,107,255,.35); border-radius: 20px; padding: 54px 30px;
+    }
+    .final h2 { font-size: 34px; font-weight: 900; }
+    .final p { color: var(--muted); font-size: 17px; margin: 14px auto 28px; max-width: 520px; }
+
+    footer { border-top: 1px solid var(--line); padding: 30px 0; text-align: center; color: var(--muted); font-size: 14px; }
+
+    @media (max-width: 860px) {
+      .hero h1 { font-size: 36px; } .hero p.sub { font-size: 17px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .feat-grid { grid-template-columns: 1fr; }
+      .show { grid-template-columns: 1fr; gap: 20px; }
+      .show.rev .txt { order: 0; }
+      .gallery { grid-template-columns: 1fr; }
+      .sec-head h2 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 상단 바 -->
+  <div class="topbar">
+    <div class="wrap">
+      <div class="brand"><span class="logo">P</span> PLAYON</div>
+      <a class="btn" href="/?demo=1" target="_blank" rel="noopener">체험하기 →</a>
+    </div>
+  </div>
+
+  <!-- 히어로 -->
+  <header class="hero">
+    <div class="wrap">
+      <span class="badge">차세대 PC방 관리 프로그램</span>
+      <h1>매장 운영의 모든 것,<br><span class="hl">PLAYON</span> 하나로.</h1>
+      <p class="sub">좌석 배치도 · 시간 과금 · 회원 관리 · 매출 정산 · 유료게임 사용량까지.
+        설치 없이 웹 브라우저로 어디서나 실시간 관리하세요.</p>
+      <div class="cta-row">
+        <a class="btn lg" href="/?demo=1" target="_blank" rel="noopener">지금 무료로 체험하기</a>
+        <a class="btn lg ghost" href="#features">기능 살펴보기</a>
+      </div>
+      <div class="hint">체험 계정으로 자동 로그인 — 실제 좌석이 70% 찬 운영 화면을 바로 확인할 수 있습니다.</div>
+
+      <div class="shot-hero">
+        <div class="browser">
+          <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="url">playon.app  ·  좌석 현황</span></div>
+          <img src="/intro/seats.png" alt="PLAYON 좌석 배치도 — 70% 가동 중" loading="lazy" />
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="n">70석</div><div class="l">실시간 좌석 관제</div></div>
+        <div class="stat"><div class="n">0원</div><div class="l">별도 설치비 · 웹 기반</div></div>
+        <div class="stat"><div class="n">24시간</div><div class="l">무중단 자동 과금</div></div>
+        <div class="stat"><div class="n">원격</div><div class="l">폰·PC 어디서나 접속</div></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 핵심 기능 -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="tag">핵심 기능</div>
+        <h2>PC방 운영에 필요한 모든 기능</h2>
+        <p>좌석부터 정산까지, 카운터에서 하는 모든 일을 한 화면에서 처리합니다.</p>
+      </div>
+      <div class="feat-grid">
+        <div class="feat"><div class="ico">🪑</div><h3>실시간 좌석 배치도</h3><p>매장 실제 배치 그대로. 회원·비회원·예약·시간부족을 색으로 한눈에. 드래그로 자리 이동.</p></div>
+        <div class="feat"><div class="ico">⏱️</div><h3>자동 시간 과금</h3><p>구역별 요금 자동 적용, 남은 시간 실시간 차감. 종료 시 자동 정산.</p></div>
+        <div class="feat"><div class="ico">👤</div><h3>회원 관리</h3><p>시간·금액 충전, 방문 이력, 블랙리스트·로그인 차단까지 손쉽게.</p></div>
+        <div class="feat"><div class="ico">📊</div><h3>매출 정산</h3><p>일·월·연 매출, 7일 추이 그래프, 상품 TOP5, 엑셀(CSV) 내보내기.</p></div>
+        <div class="feat"><div class="ico">🎮</div><h3>유료게임 사용량</h3><p>좌석 PC의 실행 게임을 감지해 사용시간·프리미엄 여부를 집계.</p></div>
+        <div class="feat"><div class="ico">🛒</div><h3>상품·재고 판매</h3><p>버튼 한 번으로 먹거리·음료 판매, 재고 자동 차감, 주문 내역 기록.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 쇼케이스 1: 좌석 -->
+  <section>
+    <div class="wrap">
+      <div class="show">
+        <div class="txt">
+          <div class="k">SEAT MAP</div>
+          <h3>매장이 그대로 화면 속에</h3>
+          <p>실제 좌석 배치를 그대로 옮겨 담았습니다. 손님이 앉으면 색이 바뀌고, 남은 시간이 실시간으로 흐릅니다.</p>
+          <ul>
+            <li>회원(보라)·비회원(주황)·예약(초록)·시간부족(빨강) 색상 구분</li>
+            <li>좌석 클릭 → 충전·이동·상품판매·정산 즉시 처리</li>
+            <li>가동률·오늘 매출을 상단에서 항상 확인</li>
+          </ul>
+        </div>
+        <div class="cap"><img src="/intro/seat-detail.png" alt="좌석 상세 — 충전·이동·정산" loading="lazy" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 쇼케이스 2: 매출 -->
+  <section>
+    <div class="wrap">
+      <div class="show rev">
+        <div class="txt">
+          <div class="k">SALES</div>
+          <h3>오늘 얼마 벌었는지, 바로 확인</h3>
+          <p>매출을 일·월·연 단위로 자동 집계하고, 최근 7일 추이를 그래프로 보여줍니다. 사장님이 매장에 없어도 폰으로 확인하세요.</p>
+          <ul>
+            <li>상품 매출 · PC 이용 매출 · 이용자 수 분리 집계</li>
+            <li>전일 대비 증감, 상품판매 TOP5 자동 순위</li>
+            <li>건별 결제 내역 엑셀(CSV) 저장</li>
+          </ul>
+        </div>
+        <div class="cap"><img src="/intro/sales.png" alt="매출 대시보드" loading="lazy" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 쇼케이스 3: 회원 -->
+  <section>
+    <div class="wrap">
+      <div class="show">
+        <div class="txt">
+          <div class="k">MEMBERS</div>
+          <h3>단골 손님을 데이터로 관리</h3>
+          <p>회원별 잔여 시간·금액, 방문 이력을 한 곳에서. 문제 손님은 블랙리스트·로그인 차단으로 매장을 지킵니다.</p>
+          <ul>
+            <li>시간·금액 충전 및 잔액 실시간 반영</li>
+            <li>닉네임·연락처·성인 여부 관리</li>
+            <li>이름·닉네임 즉시 검색</li>
+          </ul>
+        </div>
+        <div class="cap"><img src="/intro/members.png" alt="회원 관리" loading="lazy" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 갤러리 -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="tag">SCREENS</div>
+        <h2>더 많은 운영 화면</h2>
+        <p>실제 데모 환경에서 캡쳐한 화면입니다. 체험하기에서 직접 눌러보세요.</p>
+      </div>
+      <div class="gallery">
+        <div class="gcard"><img src="/intro/products.png" alt="상품 관리" loading="lazy" /><div class="cap-t">상품 관리<small>재고·노출·품절·가격 관리</small></div></div>
+        <div class="gcard"><img src="/intro/orders.png" alt="주문 내역" loading="lazy" /><div class="cap-t">주문 내역<small>상품 판매 내역 기록</small></div></div>
+        <div class="gcard"><img src="/intro/history.png" alt="이용 내역" loading="lazy" /><div class="cap-t">이용 내역<small>좌석 이용·정산 기록</small></div></div>
+        <div class="gcard"><img src="/intro/games.png" alt="유료게임 리포트" loading="lazy" /><div class="cap-t">유료게임 리포트<small>게임별 사용량 집계</small></div></div>
+        <div class="gcard"><img src="/intro/logs.png" alt="시스템 로그" loading="lazy" /><div class="cap-t">시스템 로그<small>모든 운영 기록 추적</small></div></div>
+        <div class="gcard"><img src="/intro/seats.png" alt="좌석 배치도" loading="lazy" /><div class="cap-t">좌석 배치도<small>실시간 가동 현황</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 마무리 CTA -->
+  <section class="final">
+    <div class="wrap">
+      <div class="box">
+        <h2>지금 바로 체험해 보세요</h2>
+        <p>설치도, 가입도 필요 없습니다. 버튼을 누르면 실제 운영 화면이 바로 열립니다.</p>
+        <a class="btn lg" href="/?demo=1" target="_blank" rel="noopener">PLAYON 체험하기 →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">PLAYON — PC방 관리 프로그램 · © 2026</div>
+  </footer>
+</body>
+</html>

@@ -688,6 +688,19 @@ $('couponForm').addEventListener('submit', async (e) => {
   } catch (err) { alert(err.message); }
 });
 
+// ---- 체험하기(데모) 모드: ?demo=1 → test 계정 자동 로그인 + 70% 좌석 채우기 ----
+async function startDemo() {
+  try {
+    const r = await api('/api/demo/login', 'POST', {});
+    TOKEN = r.token; localStorage.setItem('wm_token', TOKEN);
+    $('whoami').innerHTML = `${r.name}(체험) <a href="#" onclick="logout();return false">로그아웃</a>`;
+    await api('/api/demo/seed', 'POST', {});
+    hideLogin();
+  } catch (e) { showLogin(); }
+}
+
 // ---- 초기 인증 상태 ----
-if (TOKEN) { hideLogin(); } else { showLogin(); }
+if (new URLSearchParams(location.search).get('demo') === '1') {
+  startDemo();
+} else if (TOKEN) { hideLogin(); } else { showLogin(); }
 connect();
