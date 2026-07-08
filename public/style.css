@@ -182,6 +182,12 @@ button.danger { background: var(--warn); }
 .field { display: flex; flex-direction: column; gap: 7px; margin: 11px 0; }
 .field label { font-size: 12.5px; color: var(--muted); font-weight: 700; }
 
+/* 상품 판매 그리드 */
+.prod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.prod-btn { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 12px 6px; background: var(--panel2); color: var(--ink); font-weight: 700; font-size: 13px; border-radius: 10px; }
+.prod-btn span { font-size: 12px; color: var(--brand); font-weight: 800; }
+.or-line { text-align: center; color: var(--muted); font-size: 12px; margin: 10px 0; }
+
 /* 좌석 상세 팝업 */
 .seat-detail { background: var(--bg2); border-radius: 10px; padding: 6px 14px; margin-bottom: 14px; }
 .sd-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--line); }

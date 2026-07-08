@@ -459,15 +459,26 @@ window.chargeMember = async function (id) {
   try { await api(`/api/members/${id}/charge`, 'POST', { minutes: +min }); loadMembers(); }
   catch (e) { alert(e.message); }
 };
-window.openGoods = function () {
+window.openGoods = async function () {
+  let grid = '';
+  try {
+    const prods = await api('/api/products');
+    grid = prods.filter((p) => p.on_sale && !p.sold_out).map((p) =>
+      `<button class="prod-btn" onclick="quickSell('${(p.name || '').replace(/'/g, '')}',${p.price})">${p.name}<span>${won(p.price)}</span></button>`).join('');
+  } catch { }
   $('modalTitle').textContent = '상품 판매';
   $('modalBody').innerHTML = `
-    <div class="field"><label>상품명</label><input id="goodsName" placeholder="예: 콜라" /></div>
-    <div class="field"><label>금액(원)</label><input id="goodsAmt" type="number" placeholder="2000" /></div>
+    ${grid ? `<div class="prod-grid">${grid}</div><div class="or-line">직접 입력</div>` : ''}
+    <div class="field"><input id="goodsName" placeholder="상품명" /></div>
+    <div class="field"><input id="goodsAmt" type="number" placeholder="금액(원)" /></div>
     <div class="field"><label>결제수단</label>
       <select id="goodsMethod"><option value="cash">현금</option><option value="card">카드</option></select></div>
     <button style="width:100%" onclick="sellGoods()">판매 등록</button>`;
   $('modal').classList.remove('hidden');
+};
+window.quickSell = async (name, price) => {
+  try { await api('/api/goods', 'POST', { name, amount: price }); closeModal(); alert(`${name} 판매 등록 (${won(price)})`); }
+  catch (e) { alert(e.message); }
 };
 window.openCash = async function () {
   const c = await api('/api/cash');
