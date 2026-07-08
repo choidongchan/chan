@@ -100,7 +100,7 @@ function renderSeats() {
     maxX = Math.max(maxX, seat.pos_x); maxY = Math.max(maxY, seat.pos_y);
     const left = seat.pos_x * (TILE_W + GAP_X);
     const top = seat.pos_y * (TILE_H + GAP_Y);
-    const pos = `style="left:${left}px;top:${top}px"`;
+    const pos = `data-id="${seat.id}" style="left:${left}px;top:${top}px"`;
     if (seat.status === 'in_use') {
       const ss = seat.session;
       const isMember = ss.kind === 'member';
@@ -146,6 +146,41 @@ function tickSeats() {
   });
 }
 setInterval(tickSeats, 1000);
+
+// ---- 좌석 배치도 편집 (드래그) ----
+let editMode = false;
+window.toggleEdit = function () {
+  editMode = !editMode;
+  $('editBtn').textContent = editMode ? '✔ 편집 완료' : '🔧 배치 편집';
+  $('editBtn').classList.toggle('on', editMode);
+  $('seatmap').classList.toggle('editing', editMode);
+};
+let drag = null;
+$('seatmap').addEventListener('mousedown', (e) => {
+  if (!editMode) return;
+  const el = e.target.closest('.seat');
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  drag = { el, dx: e.clientX - r.left, dy: e.clientY - r.top };
+  el.style.zIndex = 30; el.style.opacity = '.85';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', (e) => {
+  if (!drag) return;
+  const m = $('seatmap').getBoundingClientRect();
+  drag.el.style.left = Math.max(0, e.clientX - m.left - drag.dx) + 'px';
+  drag.el.style.top = Math.max(0, e.clientY - m.top - drag.dy) + 'px';
+});
+document.addEventListener('mouseup', async () => {
+  if (!drag) return;
+  const el = drag.el; drag = null;
+  const px = Math.max(0, Math.round(parseFloat(el.style.left) / (TILE_W + GAP_X)));
+  const py = Math.max(0, Math.round(parseFloat(el.style.top) / (TILE_H + GAP_Y)));
+  el.style.left = px * (TILE_W + GAP_X) + 'px';
+  el.style.top = py * (TILE_H + GAP_Y) + 'px';
+  el.style.zIndex = ''; el.style.opacity = '';
+  try { await api('/api/seats/' + el.dataset.id, 'PATCH', { pos_x: px, pos_y: py }); } catch (e) { }
+});
 
 // ---- 매출 대시보드 (일/월/연) ----
 let salesPeriod = 'day';
@@ -289,6 +324,7 @@ async function loadOrders() {
 
 // ---- 좌석 클릭 상세 팝업 (충전/이동/정산/착석) ----
 window.openSeat = function (seatId) {
+  if (editMode) return; // 편집 중엔 클릭 대신 드래그
   const seat = STATE.seats.find((s) => s.id === seatId);
   $('modalTitle').textContent = `${seat.seat_no}번 좌석 · ${seat.zone}`;
   const body = $('modalBody');

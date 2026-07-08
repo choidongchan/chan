@@ -531,6 +531,13 @@ const server = http.createServer(async (req, res) => {
     if (mStart && req.method === 'POST') return send(res, 200, startSession(+mStart[1], await readBody(req)));
     const mEnd = path.match(/^\/api\/seats\/(\d+)\/end$/);
     if (mEnd && req.method === 'POST') return send(res, 200, endSession(+mEnd[1]));
+    const mPos = path.match(/^\/api\/seats\/(\d+)$/);
+    if (mPos && req.method === 'PATCH') {
+      const b = await readBody(req);
+      db.prepare('UPDATE seats SET pos_x=?, pos_y=? WHERE id=?').run(b.pos_x | 0, b.pos_y | 0, +mPos[1]);
+      broadcast();
+      return send(res, 200, { ok: true });
+    }
     const mAdd = path.match(/^\/api\/seats\/(\d+)\/addtime$/);
     if (mAdd && req.method === 'POST') return send(res, 200, addTime(+mAdd[1], (await readBody(req)).minutes));
     const mMove = path.match(/^\/api\/seats\/(\d+)\/move$/);
