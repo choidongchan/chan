@@ -351,6 +351,45 @@ function receipt(sessionId) {
   };
 }
 
+// 매출 대시보드 (WC 매출 화면) — 요약/건별결제/상품TOP5/분류별
+function salesRich(date) {
+  const d = date || nowISO().slice(0, 10);
+  const prevD = new Date(new Date(d + 'T00:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
+  const sumWhere = (extra, p) => db.prepare(`SELECT COALESCE(SUM(amount),0) t FROM sales WHERE substr(created_at,1,10)=?${extra}`).get(...p).t;
+  const total = sumWhere('', [d]);
+  const goods_total = sumWhere(" AND type='goods'", [d]);
+  const seat_total = sumWhere(" AND type='seat'", [d]);
+  const charge_total = sumWhere(" AND type='charge'", [d]);
+  const prev_total = sumWhere('', [prevD]);
+  const user_count = db.prepare("SELECT COUNT(*) c FROM sessions WHERE status='closed' AND substr(ended_at,1,10)=?").get(d).c;
+  const top_products = db.prepare(
+    "SELECT name, COUNT(*) cnt, COALESCE(SUM(amount),0) amount FROM sales WHERE substr(created_at,1,10)=? AND type='goods' GROUP BY name ORDER BY amount DESC LIMIT 5"
+  ).all(d);
+  const by_category = [
+    { category: 'PC 이용', amount: seat_total },
+    { category: '상품 판매', amount: goods_total },
+    { category: '선불 충전', amount: charge_total },
+  ].filter((x) => x.amount > 0);
+  const payments = db.prepare(
+    `SELECT s.amount, s.type, s.name, s.created_at,
+            seat.seat_no, m.nickname, m.name mname, m.login_id, m.is_adult, m.phone
+     FROM sales s
+     LEFT JOIN sessions ss ON ss.id = s.session_id
+     LEFT JOIN seats seat ON seat.id = ss.seat_id
+     LEFT JOIN members m ON m.id = s.member_id
+     WHERE substr(s.created_at,1,10)=? ORDER BY s.id DESC LIMIT 100`
+  ).all(d).map((r) => ({
+    seat_no: r.seat_no ?? null,
+    user: r.nickname || r.mname || r.login_id || null,
+    phone4: r.phone ? r.phone.slice(-4) : null,
+    is_adult: r.is_adult == null ? null : !!r.is_adult,
+    product: r.type === 'seat' ? 'PC 이용' : (r.type === 'charge' ? '선불 충전' : (r.name || '상품')),
+    type_label: r.type === 'seat' ? '정액권' : (r.type === 'charge' ? '충전' : '상품'),
+    amount: r.amount, created_at: r.created_at,
+  }));
+  return { date: d, total, goods_total, seat_total, charge_total, user_count, prev_total, diff: total - prev_total, top_products, by_category, payments };
+}
+
 // 유료게임 사용 리포트 (게임사 정산의 기초 자료 — 4단계에서 실제 정산에 활용)
 function gamesReport(date) {
   const d = date || nowISO().slice(0, 10);
@@ -488,6 +527,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/goods' && req.method === 'POST') return send(res, 200, sellGoods(await readBody(req)));
 
     if (path === '/api/report/daily') return send(res, 200, dailyReport(url.searchParams.get('date')));
+    if (path === '/api/report/sales') return send(res, 200, salesRich(url.searchParams.get('date')));
     if (path === '/api/report/games') return send(res, 200, gamesReport(url.searchParams.get('date')));
 
     // 상품 / 주문

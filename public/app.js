@@ -146,17 +146,39 @@ function tickSeats() {
 }
 setInterval(tickSeats, 1000);
 
-// ---- 매출 ----
+// ---- 매출 대시보드 ----
 async function loadSales() {
   const date = $('salesDate').value || undefined;
-  const r = await api('/api/report/daily' + (date ? `?date=${date}` : ''));
-  const label = { seat: '좌석요금', charge: '선불충전', goods: '상품판매' };
-  const rows = r.by_type.map((t) => `<tr><td>${label[t.type] || t.type}</td><td>${t.cnt}건</td><td class="r">${won(t.amount)}</td></tr>`).join('');
-  $('salesReport').innerHTML = `
-    <div class="bignum">${r.date} 총매출 <b>${won(r.total)}</b></div>
-    <table class="tbl"><thead><tr><th>구분</th><th>건수</th><th class="r">금액</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan=3 class="muted">매출 없음</td></tr>'}</tbody></table>
-    <div class="muted" style="margin-top:10px">종료 세션 ${r.sessions.cnt}건 · 좌석요금 합계 ${won(r.sessions.amount)}</div>`;
+  const r = await api('/api/report/sales' + (date ? `?date=${date}` : ''));
+  const diffSign = r.diff > 0 ? '▲' : r.diff < 0 ? '▼' : '-';
+  const diffColor = r.diff >= 0 ? '#16a34a' : '#ef4444';
+  const cards = `
+    <div class="cards">
+      <div class="card big"><div class="ci">💰</div><div class="cl">일 매출 총합계</div><div class="cv">${won(r.total)}</div></div>
+      <div class="card"><div class="cl">상품 판매</div><div class="cv">${won(r.goods_total)}</div></div>
+      <div class="card"><div class="cl">PC 이용</div><div class="cv">${won(r.seat_total)}</div></div>
+      <div class="card"><div class="cl">이용자 현황</div><div class="cv">${r.user_count}명</div></div>
+      <div class="card"><div class="cl">전일 대비</div><div class="cv" style="color:${diffColor}">${diffSign} ${won(Math.abs(r.diff))}</div></div>
+    </div>`;
+  const top = `
+    <div class="panel"><div class="ph">상품판매 TOP 5</div>
+      <table class="tbl"><thead><tr><th>No</th><th>상품명</th><th class="r">금액</th><th class="r">판매수</th></tr></thead>
+      <tbody>${r.top_products.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td class="r">${won(p.amount)}</td><td class="r">${p.cnt}</td></tr>`).join('') || '<tr><td colspan=4 class="muted">판매 내역 없음</td></tr>'}</tbody></table></div>`;
+  const cats = `
+    <div class="panel"><div class="ph">분류별 매출</div>
+      <table class="tbl"><thead><tr><th>No</th><th>분류</th><th class="r">매출</th></tr></thead>
+      <tbody>${r.by_category.map((c, i) => `<tr><td>${i + 1}</td><td>${c.category}</td><td class="r">${won(c.amount)}</td></tr>`).join('') || '<tr><td colspan=3 class="muted">매출 없음</td></tr>'}</tbody></table></div>`;
+  const pays = `
+    <div class="panel"><div class="ph">건별 결제 내역</div>
+      <table class="tbl"><thead><tr><th>PC번호</th><th>사용자(뒷자리)</th><th>성인여부</th><th>결제 상품명</th><th class="r">결제금액</th><th>유형</th><th>결제시간</th></tr></thead>
+      <tbody>${r.payments.map((p) => `<tr>
+        <td>${p.seat_no ?? '-'}</td>
+        <td>${p.user ? `${p.user}${p.phone4 ? ` <small style="color:#9aa6bd">(${p.phone4})</small>` : ''}` : '<span style="color:#9aa6bd">비회원</span>'}</td>
+        <td>${p.is_adult == null ? '-' : (p.is_adult ? '성인' : '미성년')}</td>
+        <td>${p.product}</td><td class="r">${won(p.amount)}</td>
+        <td><span class="pill blue">${p.type_label}</span></td><td>${fmtDT(p.created_at)}</td>
+      </tr>`).join('') || '<tr><td colspan=7 class="muted">결제 내역 없음</td></tr>'}</tbody></table></div>`;
+  $('salesReport').innerHTML = cards + `<div class="sales-grid"><div>${pays}</div><div>${top}${cats}</div></div>`;
 }
 
 // ---- 유료게임 ----

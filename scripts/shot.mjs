@@ -35,8 +35,10 @@ for (let i = 0; i < occupy.length; i++) {
   await api('/api/agent/game', 'POST', { seat_no: n, proc_name: games[i % games.length] });
   await api('/api/seat/status?seat_no=' + n); // 온라인
 }
-await api('/api/goods', 'POST', { name: '콜라', amount: 2000 }, token);
-await api('/api/goods', 'POST', { name: '컵라면', amount: 1500 }, token);
+const goodsSales = [['콜라', 2000], ['콜라', 2000], ['컵라면', 1500], ['핫바', 1800], ['치킨너겟', 5000], ['사이다', 2000], ['컵라면', 1500], ['생수 500ml', 1000]];
+for (const [gname, gamt] of goodsSales) await api('/api/goods', 'POST', { name: gname, amount: gamt }, token);
+// 좌석 몇 개 종료(정산) → PC이용 매출/이용자 생성
+for (const n of [3, 11, 22]) await api(`/api/seats/${n}/end`, 'POST', {}, token);
 
 // --- 스크린샷 ---
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
@@ -70,6 +72,11 @@ await page.screenshot({ path: 'scripts/4-products.png' });
 await page.click('.m[data-pop="orders"]');
 await page.waitForTimeout(700);
 await page.screenshot({ path: 'scripts/5-orders.png' });
+
+// 매출 대시보드 팝업
+await page.click('.m[data-pop="sales"]');
+await page.waitForTimeout(700);
+await page.screenshot({ path: 'scripts/6-sales.png' });
 
 await browser.close();
 console.log('스크린샷 완료');
