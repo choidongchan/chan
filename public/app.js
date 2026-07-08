@@ -192,8 +192,10 @@ document.addEventListener('mouseup', async () => {
 // ---- 매출 대시보드 (일/월/연) ----
 let salesPeriod = 'day';
 const PERIOD_LABEL = { day: '일', month: '월', year: '연' };
+let lastSales = null;
 async function loadSales() {
   const r = await api('/api/report/sales?period=' + salesPeriod);
+  lastSales = r;
   const diffSign = r.diff > 0 ? '▲' : r.diff < 0 ? '▼' : '-';
   const diffColor = r.diff >= 0 ? '#16a34a' : '#ef4444';
   const cards = `
@@ -516,6 +518,18 @@ $('memberForm').addEventListener('submit', async (e) => {
     e.target.reset(); loadMembers();
   } catch (err) { alert(err.message); }
 });
+window.exportSalesCsv = function () {
+  if (!lastSales || !lastSales.payments.length) { alert('내보낼 결제 내역이 없습니다.'); return; }
+  const head = ['PC번호', '사용자', '뒷자리', '성인여부', '결제상품명', '결제금액', '유형', '결제시간'];
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = lastSales.payments.map((p) => [p.seat_no ?? '', p.user ?? '비회원', p.phone4 ?? '', p.is_adult == null ? '' : (p.is_adult ? '성인' : '미성년'), p.product, p.amount, p.type_label, p.created_at].map(esc).join(','));
+  const csv = '﻿' + [head.map(esc).join(','), ...rows].join('\r\n'); // BOM for 엑셀 한글
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `PLAYON_매출_${lastSales.date}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
 document.querySelectorAll('#salesTabs .st').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('#salesTabs .st').forEach((x) => x.classList.remove('active'));
   b.classList.add('active'); salesPeriod = b.dataset.period; loadSales();
