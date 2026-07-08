@@ -111,6 +111,7 @@ function startSession(seatId, { member_login, rate_plan_id } = {}) {
   const info = db
     .prepare('INSERT INTO sessions (seat_id, member_id, rate_plan_id, kind, started_at, status) VALUES (?,?,?,?,?,?)')
     .run(seatId, member?.id ?? null, planId, member ? 'member' : 'guest', nowISO(), 'active');
+  if (member) db.prepare('UPDATE members SET last_visit_at=? WHERE id=?').run(nowISO(), member.id);
   broadcast();
   return { session_id: info.lastInsertRowid };
 }
@@ -146,11 +147,20 @@ function endSession(seatId) {
   return { amount, minutes: mins, session_id: s.id };
 }
 
-function createMember({ login_id, name, phone }) {
+function createMember({ login_id, name, phone, nickname, is_adult }) {
   if (!login_id) throw new Error('아이디 필요');
-  db.prepare('INSERT INTO members (login_id, name, phone, created_at) VALUES (?,?,?,?)')
-    .run(login_id, name ?? '', phone ?? '', nowISO());
+  db.prepare('INSERT INTO members (login_id, name, phone, nickname, is_adult, created_at) VALUES (?,?,?,?,?,?)')
+    .run(login_id, name ?? '', phone ?? '', nickname ?? '', is_adult == null ? 1 : (is_adult ? 1 : 0), nowISO());
   return db.prepare('SELECT * FROM members WHERE login_id=?').get(login_id);
+}
+
+// 회원 상태 변경(블랙리스트/로그인금지)
+function updateMember(id, patch) {
+  const m = db.prepare('SELECT * FROM members WHERE id=?').get(id);
+  if (!m) throw new Error('회원 없음');
+  const fields = ['name', 'nickname', 'phone', 'is_adult', 'blacklist', 'login_block'];
+  for (const f of fields) if (f in patch) db.prepare(`UPDATE members SET ${f}=? WHERE id=?`).run(patch[f], id);
+  return db.prepare('SELECT * FROM members WHERE id=?').get(id);
 }
 
 function chargeMember(memberId, { minutes = 0, cash = 0, method = 'cash' }) {
@@ -199,10 +209,53 @@ function reportGame(seatNo, { proc_name, game_code }) {
 function sellGoods({ name, amount, method = 'cash', member_id = null }) {
   const won = +amount;
   if (!won || won <= 0) throw new Error('금액 오류');
-  db.prepare('INSERT INTO sales (member_id, type, amount, method, created_at) VALUES (?,?,?,?,?)')
-    .run(member_id, 'goods', won, method, nowISO());
+  db.prepare('INSERT INTO sales (member_id, type, amount, method, name, created_at) VALUES (?,?,?,?,?,?)')
+    .run(member_id, 'goods', won, method, name ?? '상품', nowISO());
   broadcast();
   return { ok: true };
+}
+
+// 상품 관리
+function createProduct({ category, name, price }) {
+  if (!name) throw new Error('상품명 필요');
+  const info = db.prepare('INSERT INTO products (category, name, price) VALUES (?,?,?)')
+    .run(category || '기타', name, +price || 0);
+  return db.prepare('SELECT * FROM products WHERE id=?').get(info.lastInsertRowid);
+}
+function deleteProduct(id) { db.prepare('DELETE FROM products WHERE id=?').run(id); return { ok: true }; }
+
+// 주문 내역 (상품 판매 내역)
+function orderList(limit = 200) {
+  return db.prepare(
+    `SELECT s.id, s.name, s.amount, s.method, s.created_at, m.nickname, m.name mname, m.login_id
+     FROM sales s LEFT JOIN members m ON m.id = s.member_id
+     WHERE s.type='goods' ORDER BY s.id DESC LIMIT ?`
+  ).all(limit).map((r) => ({
+    id: r.id, name: r.name, amount: r.amount, method: r.method, created_at: r.created_at,
+    customer: r.nickname || r.mname || r.login_id || null,
+  }));
+}
+
+// 이용 내역 (최근 세션 목록) — WC "이용내역"
+function historyList(limit = 200) {
+  const rows = db.prepare(
+    `SELECT s.id, s.kind, s.started_at, s.ended_at, s.amount,
+            seat.seat_no, m.login_id, m.name, m.nickname, m.is_adult
+     FROM sessions s
+     JOIN seats seat ON seat.id = s.seat_id
+     LEFT JOIN members m ON m.id = s.member_id
+     ORDER BY s.id DESC LIMIT ?`
+  ).all(limit);
+  return rows.map((r) => ({
+    seat_no: r.seat_no,
+    user: r.kind === 'member' ? (r.nickname || r.name || r.login_id) : null,
+    user_no: r.kind === 'member' ? r.login_id : null,
+    is_adult: r.is_adult == null ? null : !!r.is_adult,
+    amount: r.amount,
+    started_at: r.started_at,
+    ended_at: r.ended_at,
+    minutes: r.ended_at ? elapsedMinutes(r.started_at, r.ended_at) : null,
+  }));
 }
 
 // 일별 매출 리포트
@@ -401,6 +454,9 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET') return send(res, 200, db.prepare('SELECT * FROM members ORDER BY id DESC').all());
       if (req.method === 'POST') return send(res, 200, createMember(await readBody(req)));
     }
+    const mMem = path.match(/^\/api\/members\/(\d+)$/);
+    if (mMem && req.method === 'PATCH') return send(res, 200, updateMember(+mMem[1], await readBody(req)));
+    if (path === '/api/history') return send(res, 200, historyList());
 
     const mStart = path.match(/^\/api\/seats\/(\d+)\/start$/);
     if (mStart && req.method === 'POST') return send(res, 200, startSession(+mStart[1], await readBody(req)));
@@ -433,6 +489,15 @@ const server = http.createServer(async (req, res) => {
 
     if (path === '/api/report/daily') return send(res, 200, dailyReport(url.searchParams.get('date')));
     if (path === '/api/report/games') return send(res, 200, gamesReport(url.searchParams.get('date')));
+
+    // 상품 / 주문
+    if (path === '/api/products') {
+      if (req.method === 'GET') return send(res, 200, db.prepare('SELECT * FROM products ORDER BY category, id').all());
+      if (req.method === 'POST') return send(res, 200, createProduct(await readBody(req)));
+    }
+    const mProd = path.match(/^\/api\/products\/(\d+)$/);
+    if (mProd && req.method === 'DELETE') return send(res, 200, deleteProduct(+mProd[1]));
+    if (path === '/api/orders') return send(res, 200, orderList());
 
     // 요금제
     if (path === '/api/plans') {

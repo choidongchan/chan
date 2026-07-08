@@ -12,10 +12,13 @@
       <div class="brand"><span class="logo">P</span><span>PLAYON</span></div>
       <nav class="menu">
         <button class="m active" data-tab="seats">좌석현황</button>
-        <button class="m" data-tab="members">회원 관리</button>
-        <button class="m" data-tab="sales">매출</button>
-        <button class="m" data-tab="games">유료게임</button>
-        <button class="m" data-tab="settings">설정</button>
+        <button class="m" data-pop="members">회원 관리</button>
+        <button class="m" data-pop="products">상품 관리</button>
+        <button class="m" data-pop="history">이용내역</button>
+        <button class="m" data-pop="orders">주문 내역</button>
+        <button class="m" data-pop="sales">매출</button>
+        <button class="m" data-pop="games">유료게임</button>
+        <button class="m" data-pop="settings">설정</button>
       </nav>
       <div class="right">
         <span class="clock" id="clock"></span>
@@ -23,19 +26,13 @@
       </div>
     </div>
     <div class="bar-status">
-      <div class="util">
-        가동률 <b id="uUse">0</b> <span>/</span> <b id="uTotal">0</b> <span>/</span> <b class="pct" id="uPct">0%</b>
-      </div>
+      <div class="util">가동률 <b id="uUse">0</b> <span>/</span> <b id="uTotal">0</b> <span>/</span> <b class="pct" id="uPct">0%</b></div>
       <div class="conn"><span class="live"></span> 매장 서버 연결됨</div>
-      <div class="toolbar">
-        <span id="salesToday">오늘매출 0원</span>
-        <button onclick="openGoods()">상품 판매</button>
-      </div>
+      <div class="toolbar"><span id="salesToday">오늘매출 0원</span><button onclick="openGoods()">상품 판매</button></div>
     </div>
   </header>
 
   <main>
-    <!-- 좌석현황: 배치도 -->
     <section class="view active" id="view-seats">
       <div class="legend">
         <span><i class="lg empty"></i> 빈자리</span>
@@ -45,58 +42,92 @@
       </div>
       <div class="seatmap-wrap"><div id="seatmap" class="seatmap"></div></div>
     </section>
-
-    <!-- 매출 -->
-    <section class="view" id="view-sales">
-      <div class="view-head"><h2>오늘 매출</h2><input type="date" id="salesDate" /></div>
-      <div id="salesReport"></div>
-    </section>
-
-    <!-- 유료게임 -->
-    <section class="view" id="view-games">
-      <div class="view-head"><h2>유료게임 사용 리포트</h2><input type="date" id="gamesDate" /></div>
-      <p class="note">※ 게임 감지·사용시간 측정 자료입니다. 실제 게임사 정산은 제휴/인증이 필요합니다.</p>
-      <div id="gamesReport"></div>
-    </section>
-
-    <!-- 회원 -->
-    <section class="view" id="view-members">
-      <div class="view-head"><h2>회원 관리</h2></div>
-      <form id="memberForm" class="inline-form">
-        <input name="login_id" placeholder="아이디" required />
-        <input name="name" placeholder="이름" />
-        <input name="phone" placeholder="연락처" />
-        <button type="submit">회원 등록</button>
-      </form>
-      <div id="membersTable"></div>
-    </section>
-
-    <!-- 설정 -->
-    <section class="view" id="view-settings">
-      <div class="view-head"><h2>매장 설정</h2></div>
-      <form id="shopForm" class="inline-form">
-        <input name="shop_name" placeholder="매장 이름" />
-        <input name="business_no" placeholder="사업자번호" />
-        <input name="phone" placeholder="전화번호" />
-        <button type="submit">저장</button>
-      </form>
-      <div class="view-head" style="margin-top:22px"><h2>요금제</h2></div>
-      <div id="plansTable"></div>
-      <form id="planForm" class="inline-form">
-        <input name="name" placeholder="요금제 이름" required />
-        <input name="won_per_hour" type="number" placeholder="시간당 요금(원)" required />
-        <button type="submit">요금제 추가</button>
-      </form>
-      <div class="view-head" style="margin-top:22px"><h2>쿠폰</h2></div>
-      <form id="couponForm" class="inline-form">
-        <select name="kind"><option value="minutes">시간(분)</option><option value="cash">선불금(원)</option></select>
-        <input name="value" type="number" placeholder="값" required />
-        <input name="count" type="number" placeholder="발급 수량" value="1" />
-        <button type="submit">쿠폰 발급</button>
-      </form>
-      <div id="couponsTable"></div>
-    </section>
   </main>
+
+  <!-- 월드클래스 스타일 밝은 팝업 -->
+  <div id="wcpop" class="wc-popup hidden">
+    <div class="wc-window">
+      <div class="wc-titlebar"><span id="wcTitle">회원 관리</span><button class="wc-x" onclick="closeWcPop()">✕</button></div>
+      <div class="wc-body">
+
+        <!-- 회원 관리 -->
+        <div class="psec" id="p-members">
+          <div class="wc-toolbar">
+            <div class="wc-actions"><button onclick="focusMemberForm()">일반회원 추가</button></div>
+            <input class="wc-search" id="memberSearch" placeholder="이름 / 닉네임 검색" oninput="loadMembers()" />
+          </div>
+          <form id="memberForm" class="inline-form">
+            <input name="login_id" placeholder="아이디" required />
+            <input name="name" placeholder="이름" />
+            <input name="nickname" placeholder="닉네임" />
+            <input name="phone" placeholder="연락처" />
+            <button type="submit">등록</button>
+          </form>
+          <div id="membersTable"></div>
+        </div>
+
+        <!-- 상품 관리 -->
+        <div class="psec" id="p-products">
+          <div class="wc-toolbar">
+            <div class="wc-actions"><button onclick="openProductForm()">새 상품등록</button></div>
+          </div>
+          <div id="productsTable"></div>
+        </div>
+
+        <!-- 이용 내역 -->
+        <div class="psec" id="p-history">
+          <div class="wc-toolbar"><div class="wc-actions"><button onclick="loadHistory()">최신 항목 불러오기</button></div></div>
+          <div id="historyTable"></div>
+        </div>
+
+        <!-- 주문 내역 -->
+        <div class="psec" id="p-orders">
+          <div class="wc-toolbar"><div class="wc-actions"><button onclick="loadOrders()">새로고침</button></div></div>
+          <div id="ordersTable"></div>
+        </div>
+
+        <!-- 매출 -->
+        <div class="psec" id="p-sales">
+          <div class="wc-toolbar"><input type="date" id="salesDate" /></div>
+          <div id="salesReport"></div>
+        </div>
+
+        <!-- 유료게임 -->
+        <div class="psec" id="p-games">
+          <div class="wc-toolbar"><input type="date" id="gamesDate" /></div>
+          <p class="note">※ 게임 감지·사용시간 측정 자료입니다. 실제 게임사 정산은 제휴/인증이 필요합니다.</p>
+          <div id="gamesReport"></div>
+        </div>
+
+        <!-- 설정 -->
+        <div class="psec" id="p-settings">
+          <h4>매장 설정</h4>
+          <form id="shopForm" class="inline-form">
+            <input name="shop_name" placeholder="매장 이름" />
+            <input name="business_no" placeholder="사업자번호" />
+            <input name="phone" placeholder="전화번호" />
+            <button type="submit">저장</button>
+          </form>
+          <h4>요금제</h4>
+          <div id="plansTable"></div>
+          <form id="planForm" class="inline-form">
+            <input name="name" placeholder="요금제 이름" required />
+            <input name="won_per_hour" type="number" placeholder="시간당 요금(원)" required />
+            <button type="submit">추가</button>
+          </form>
+          <h4>쿠폰</h4>
+          <form id="couponForm" class="inline-form">
+            <select name="kind"><option value="minutes">시간(분)</option><option value="cash">선불금(원)</option></select>
+            <input name="value" type="number" placeholder="값" required />
+            <input name="count" type="number" placeholder="발급 수량" value="1" />
+            <button type="submit">발급</button>
+          </form>
+          <div id="couponsTable"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <div id="modal" class="modal hidden">
     <div class="modal-box"><h3 id="modalTitle"></h3><div id="modalBody"></div>

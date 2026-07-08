@@ -35,19 +35,29 @@ window.logout = async function () {
   TOKEN = ''; localStorage.removeItem('wm_token'); location.reload();
 };
 
-// ---- 탭 전환 ----
+// ---- 메뉴: 좌석현황(다크 뷰) / 나머지(밝은 팝업) ----
+const POP_TITLES = { members: '회원 관리', products: '상품 관리', history: '이용내역', orders: '주문 내역', sales: '매출', games: '유료게임', settings: '설정' };
 document.querySelectorAll('.menu .m').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.menu .m').forEach((b) => b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
     btn.classList.add('active');
-    $('view-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'sales') loadSales();
-    if (btn.dataset.tab === 'games') loadGames();
-    if (btn.dataset.tab === 'members') loadMembers();
-    if (btn.dataset.tab === 'settings') loadSettings();
+    if (btn.dataset.tab === 'seats') { closeWcPop(); return; }
+    openWcPop(btn.dataset.pop);
   });
 });
+function openWcPop(pop) {
+  $('wcTitle').textContent = POP_TITLES[pop] || '';
+  document.querySelectorAll('.psec').forEach((s) => s.classList.remove('active'));
+  $('p-' + pop).classList.add('active');
+  $('wcpop').classList.remove('hidden');
+  ({ members: loadMembers, products: loadProducts, history: loadHistory, orders: loadOrders, sales: loadSales, games: loadGames, settings: loadSettings }[pop])?.();
+}
+function closeWcPop() {
+  $('wcpop').classList.add('hidden');
+  document.querySelectorAll('.menu .m').forEach((b) => b.classList.remove('active'));
+  document.querySelector('.menu .m[data-tab="seats"]').classList.add('active');
+}
+window.closeWcPop = closeWcPop;
 
 // ---- 실시간 스트림 ----
 function connect() {
@@ -161,16 +171,96 @@ async function loadGames() {
     <tbody>${rows || '<tr><td colspan=4 class="muted">기록 없음</td></tr>'}</tbody></table>`;
 }
 
-// ---- 회원 ----
+// ---- 날짜 헬퍼 ----
+const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }) : '-';
+const fmtDT = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+const secStr = (m) => m == null ? '-' : `${Math.floor(m / 60)}시간 ${m % 60}분`;
+
+// ---- 회원 관리 (상세) ----
 async function loadMembers() {
-  STATE.members = await api('/api/members');
-  const rows = STATE.members.map((m) => `<tr>
-      <td>${m.login_id}</td><td>${m.name || ''}</td><td>${m.phone || ''}</td>
-      <td>${m.balance_minutes}분</td><td>${won(m.balance_cash)}</td>
-      <td><button onclick="chargeMember(${m.id})">시간충전</button></td></tr>`).join('');
+  const all = await api('/api/members');
+  const q = ($('memberSearch')?.value || '').trim();
+  const list = q ? all.filter((m) => (m.name || '').includes(q) || (m.nickname || '').includes(q) || (m.login_id || '').includes(q)) : all;
+  const rows = list.map((m) => `<tr>
+      <td>${m.name || '-'}</td>
+      <td>${m.nickname || '-'}</td>
+      <td>${m.phone ? m.phone.slice(-4) : '-'}</td>
+      <td>${m.is_adult ? '성인' : '<span class="pill amber">미성년</span>'}</td>
+      <td>${secStr(m.balance_minutes)}</td>
+      <td class="r">${won(m.balance_cash)}</td>
+      <td>${fmtDate(m.created_at)}</td>
+      <td>${fmtDate(m.last_visit_at)}</td>
+      <td>${m.blacklist ? '<span class="pill red">차단</span>' : '<span class="pill off">-</span>'}</td>
+      <td>${m.login_block ? '<span class="pill red">금지</span>' : '<span class="pill off">-</span>'}</td>
+      <td><button class="mini" onclick="chargeMember(${m.id})">시간충전</button>
+          <button class="mini gray" onclick="toggleBlack(${m.id},${m.blacklist ? 0 : 1})">${m.blacklist ? '해제' : '블랙'}</button></td>
+    </tr>`).join('');
   $('membersTable').innerHTML = `<table class="tbl">
-    <thead><tr><th>아이디</th><th>이름</th><th>연락처</th><th>잔여시간</th><th>선불금</th><th></th></tr></thead>
-    <tbody>${rows || '<tr><td colspan=6 class="muted">회원 없음</td></tr>'}</tbody></table>`;
+    <thead><tr><th>이름</th><th>닉네임</th><th>휴대폰뒷자리</th><th>성인여부</th><th>남은시간</th><th class="r">선불금</th><th>가입일</th><th>최근방문</th><th>블랙리스트</th><th>로그인금지</th><th>관리</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=11 class="muted">회원 없음</td></tr>'}</tbody></table>`;
+}
+window.toggleBlack = async (id, v) => { try { await api('/api/members/' + id, 'PATCH', { blacklist: v }); loadMembers(); } catch (e) { alert(e.message); } };
+window.focusMemberForm = () => $('#memberForm [name=login_id]')?.focus();
+
+// ---- 이용 내역 ----
+async function loadHistory() {
+  const rows = (await api('/api/history')).map((h) => `<tr>
+      <td>${h.seat_no}</td>
+      <td>${h.user ? `${h.user} <small style="color:#9aa6bd">(${h.user_no})</small>` : '<span style="color:#9aa6bd">비회원</span>'}</td>
+      <td>${h.is_adult == null ? '-' : (h.is_adult ? '성인' : '미성년')}</td>
+      <td class="r">${won(h.amount)}</td>
+      <td>${fmtDT(h.started_at)}</td>
+      <td>${h.ended_at ? fmtDT(h.ended_at) : '<span class="pill blue">이용중</span>'}</td>
+      <td>${h.minutes == null ? '-' : secStr(h.minutes)}</td>
+    </tr>`).join('');
+  $('historyTable').innerHTML = `<table class="tbl">
+    <thead><tr><th>PC 번호</th><th>사용자</th><th>성인여부</th><th class="r">결제금액</th><th>사용시작</th><th>사용종료</th><th>이용시간</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=7 class="muted">내역 없음</td></tr>'}</tbody></table>`;
+}
+
+// ---- 상품 관리 ----
+async function loadProducts() {
+  const rows = (await api('/api/products')).map((p) => `<tr>
+      <td>${p.category}</td><td>${p.name}</td><td class="r">${won(p.price)}</td>
+      <td>${p.on_sale ? '<span class="pill on">판매</span>' : '<span class="pill off">중지</span>'}</td>
+      <td>${p.exposed ? '노출' : '숨김'}</td>
+      <td>${p.sold_out ? '<span class="pill red">매진</span>' : '<span class="pill off">항시판매</span>'}</td>
+      <td><button class="mini gray" onclick="delProduct(${p.id})">삭제</button></td>
+    </tr>`).join('');
+  $('productsTable').innerHTML = `<table class="tbl">
+    <thead><tr><th>분류</th><th>상품 이름</th><th class="r">판매 금액</th><th>판매 여부</th><th>판매 노출</th><th>매진 설정</th><th>관리</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=7 class="muted">상품 없음</td></tr>'}</tbody></table>`;
+}
+window.delProduct = async (id) => { if (!confirm('삭제할까요?')) return; try { await api('/api/products/' + id, 'DELETE'); loadProducts(); } catch (e) { alert(e.message); } };
+window.openProductForm = () => {
+  $('modalTitle').textContent = '새 상품 등록';
+  $('modalBody').innerHTML = `
+    <div class="field"><label>분류</label><input id="pCat" placeholder="음료/먹거리/이용권" /></div>
+    <div class="field"><label>상품 이름</label><input id="pName" /></div>
+    <div class="field"><label>판매 금액(원)</label><input id="pPrice" type="number" /></div>
+    <button style="width:100%" onclick="addProduct()">등록</button>`;
+  $('modal').classList.remove('hidden');
+};
+window.addProduct = async () => {
+  try {
+    await api('/api/products', 'POST', { category: $('pCat').value, name: $('pName').value, price: +$('pPrice').value });
+    closeModal(); loadProducts();
+  } catch (e) { alert(e.message); }
+};
+
+// ---- 주문 내역 ----
+async function loadOrders() {
+  const methodLabel = { cash: '현금', card: '카드', prepaid: '선불' };
+  const rows = (await api('/api/orders')).map((o) => `<tr>
+      <td>#${o.id}</td><td>${o.name}</td>
+      <td>${o.customer || '<span style="color:#9aa6bd">비회원</span>'}</td>
+      <td><span class="pill blue">${methodLabel[o.method] || o.method}</span></td>
+      <td class="r">${won(o.amount)}</td><td>${fmtDT(o.created_at)}</td>
+      <td><span class="pill on">판매완료</span></td>
+    </tr>`).join('');
+  $('ordersTable').innerHTML = `<table class="tbl">
+    <thead><tr><th>주문번호</th><th>상품</th><th>고객</th><th>결제수단</th><th class="r">결제금액</th><th>주문시각</th><th>상태</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=7 class="muted">주문 없음</td></tr>'}</tbody></table>`;
 }
 
 // ---- 좌석 팝업 ----
@@ -267,7 +357,7 @@ $('memberForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   try {
-    await api('/api/members', 'POST', { login_id: f.get('login_id'), name: f.get('name'), phone: f.get('phone') });
+    await api('/api/members', 'POST', { login_id: f.get('login_id'), name: f.get('name'), nickname: f.get('nickname'), phone: f.get('phone') });
     e.target.reset(); loadMembers();
   } catch (err) { alert(err.message); }
 });

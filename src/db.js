@@ -22,6 +22,21 @@ export function nowISO() {
   return new Date().toISOString();
 }
 
+// 기존 DB에 컬럼이 없으면 추가(마이그레이션)
+function ensureColumn(table, col, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+export function migrate() {
+  ensureColumn('members', 'nickname', 'TEXT');
+  ensureColumn('members', 'is_adult', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('members', 'last_visit_at', 'TEXT');
+  ensureColumn('members', 'blacklist', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('members', 'login_block', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('sales', 'name', 'TEXT');
+}
+migrate();
+
 // ---- 최초 실행 시 예시 데이터 생성 ----
 export function seedIfEmpty() {
   const seatCount = db.prepare('SELECT COUNT(*) c FROM seats').get().c;
@@ -85,8 +100,17 @@ export function seedIfEmpty() {
 
   const memberCount = db.prepare('SELECT COUNT(*) c FROM members').get().c;
   if (memberCount === 0) {
-    db.prepare('INSERT INTO members (login_id, name, phone, balance_minutes, balance_cash, created_at) VALUES (?,?,?,?,?,?)')
-      .run('test01', '홍길동', '010-0000-0000', 300, 0, nowISO());
+    db.prepare('INSERT INTO members (login_id, name, nickname, phone, balance_minutes, balance_cash, created_at) VALUES (?,?,?,?,?,?,?)')
+      .run('test01', '홍길동', '길동이', '010-0000-0000', 300, 0, nowISO());
+  }
+
+  const prodCount = db.prepare('SELECT COUNT(*) c FROM products').get().c;
+  if (prodCount === 0) {
+    const p = db.prepare('INSERT INTO products (category, name, price) VALUES (?,?,?)');
+    [['음료', '콜라', 2000], ['음료', '사이다', 2000], ['음료', '생수 500ml', 1000],
+     ['먹거리', '컵라면', 1500], ['먹거리', '핫바', 1800], ['먹거리', '치킨너겟', 5000],
+     ['이용권', '1시간 이용권', 1200], ['이용권', '3시간 이용권', 3000]]
+      .forEach((r) => p.run(...r));
   }
 }
 

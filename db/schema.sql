@@ -112,3 +112,14 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- 판매 상품(음료/과자/이용권 등)
+CREATE TABLE IF NOT EXISTS products (
+  id        INTEGER PRIMARY KEY,
+  category  TEXT NOT NULL DEFAULT '기타',
+  name      TEXT NOT NULL,
+  price     INTEGER NOT NULL DEFAULT 0,
+  on_sale   INTEGER NOT NULL DEFAULT 1,   -- 판매 여부
+  exposed   INTEGER NOT NULL DEFAULT 1,   -- 판매 노출
+  sold_out  INTEGER NOT NULL DEFAULT 0    -- 매진
+);

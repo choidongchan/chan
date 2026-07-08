@@ -17,8 +17,9 @@ const { token } = await api('/api/login', 'POST', { login: 'admin', password: 'a
 await api('/api/settings', 'PUT', { shop_name: '체리 PC방 강남점', phone: '02-123-4567' }, token);
 
 const names = ['김철수', '이영희', '박민수', '최지훈', '정하늘', '강도현', '윤서연', '임재원'];
+const nicks = ['불꽃저격수', '초코라떼', '한밤의질주', '슈퍼콤보', '하늘구름', '도현짱', '서연공주', '재원고수'];
 for (let i = 0; i < names.length; i++) {
-  await api('/api/members', 'POST', { login_id: 'user' + (i + 1), name: names[i] }, token);
+  await api('/api/members', 'POST', { login_id: 'user' + (i + 1), name: names[i], nickname: nicks[i], phone: '010-1234-' + (1000 + i) }, token);
 }
 // 회원 시간 충전 (member id 2~9)
 for (let id = 1; id <= 9; id++) await api(`/api/members/${id}/charge`, 'POST', { minutes: 200 + id * 40 }, token);
@@ -50,20 +51,25 @@ await page.click('#loginForm button');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: 'scripts/1-seats.png' });
 
-// 매출 탭
-await page.click('.m[data-tab="sales"]');
+// 회원 관리 팝업
+await page.click('.m[data-pop="members"]');
 await page.waitForTimeout(700);
-await page.screenshot({ path: 'scripts/2-sales.png' });
+await page.screenshot({ path: 'scripts/2-members.png' });
 
-// 유료게임 탭
-await page.click('.m[data-tab="games"]');
+// 이용내역 팝업
+await page.click('.m[data-pop="history"]');
 await page.waitForTimeout(700);
-await page.screenshot({ path: 'scripts/3-games.png' });
+await page.screenshot({ path: 'scripts/3-history.png' });
 
-// 좌석 PC 키오스크 화면(회원 사용중)
-await page.goto(base + '/seat.html?seat=2', { waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(1000);
-await page.screenshot({ path: 'scripts/4-seat.png' });
+// 상품 관리 팝업
+await page.click('.m[data-pop="products"]');
+await page.waitForTimeout(700);
+await page.screenshot({ path: 'scripts/4-products.png' });
+
+// 주문 내역 팝업
+await page.click('.m[data-pop="orders"]');
+await page.waitForTimeout(700);
+await page.screenshot({ path: 'scripts/5-orders.png' });
 
 await browser.close();
 console.log('스크린샷 완료');
