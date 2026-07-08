@@ -113,6 +113,17 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- 좌석 예약
+CREATE TABLE IF NOT EXISTS reservations (
+  id         INTEGER PRIMARY KEY,
+  seat_id    INTEGER NOT NULL,
+  name       TEXT,
+  phone      TEXT,
+  memo       TEXT,
+  created_at TEXT,
+  active     INTEGER NOT NULL DEFAULT 1
+);
+
 -- 출퇴근 기록
 CREATE TABLE IF NOT EXISTS attendance (
   id    INTEGER PRIMARY KEY,

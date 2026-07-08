@@ -45,7 +45,11 @@ function getState() {
 
   const seatView = seats.map((seat) => {
     const s = sessionBySeat[seat.id];
-    if (!s) return { ...seat, online: isOnline(seat.seat_no), status: 'empty' };
+    if (!s) {
+      const rv = db.prepare('SELECT * FROM reservations WHERE seat_id=? AND active=1 ORDER BY id DESC LIMIT 1').get(seat.id);
+      if (rv) return { ...seat, online: isOnline(seat.seat_no), status: 'reserved', reservation: { name: rv.name, phone: rv.phone, memo: rv.memo } };
+      return { ...seat, online: isOnline(seat.seat_no), status: 'empty' };
+    }
     const mins = elapsedMinutes(s.started_at);
     const plan = planById[s.rate_plan_id];
     let remainMinutes = null;
@@ -126,6 +130,7 @@ function startSession(seatId, { member_login, rate_plan_id } = {}) {
     .prepare('INSERT INTO sessions (seat_id, member_id, rate_plan_id, kind, started_at, status) VALUES (?,?,?,?,?,?)')
     .run(seatId, member?.id ?? null, planId, member ? 'member' : 'guest', nowISO(), 'active');
   if (member) db.prepare('UPDATE members SET last_visit_at=? WHERE id=?').run(nowISO(), member.id);
+  db.prepare('UPDATE reservations SET active=0 WHERE seat_id=? AND active=1').run(seatId);
   writeLog('착석', `${seat.seat_no}번 · ${member ? '회원 ' + member.login_id : '게스트'}`);
   broadcast();
   return { session_id: info.lastInsertRowid };
@@ -164,6 +169,24 @@ function endSession(seatId) {
   return { amount, minutes: mins, session_id: s.id };
 }
 function fmtWon(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
+
+// 좌석 예약
+function reserveSeat(seatId, { name, phone, memo }) {
+  const busy = db.prepare("SELECT 1 FROM sessions WHERE seat_id=? AND status='active'").get(seatId);
+  if (busy) throw new Error('사용중인 좌석은 예약할 수 없습니다');
+  db.prepare('UPDATE reservations SET active=0 WHERE seat_id=? AND active=1').run(seatId);
+  db.prepare('INSERT INTO reservations (seat_id, name, phone, memo, created_at, active) VALUES (?,?,?,?,?,1)')
+    .run(seatId, name ?? '', phone ?? '', memo ?? '', nowISO());
+  const seatNo = db.prepare('SELECT seat_no FROM seats WHERE id=?').get(seatId)?.seat_no;
+  writeLog('좌석예약', `${seatNo}번 · ${name || ''}`);
+  broadcast();
+  return { ok: true };
+}
+function cancelReservation(seatId) {
+  db.prepare('UPDATE reservations SET active=0 WHERE seat_id=? AND active=1').run(seatId);
+  broadcast();
+  return { ok: true };
+}
 
 // 좌석의 활성 세션에 시간 추가(회원 잔여시간 충전)
 function addTime(seatId, minutes) {
@@ -635,6 +658,10 @@ const server = http.createServer(async (req, res) => {
     if (mAdd && req.method === 'POST') return send(res, 200, addTime(+mAdd[1], (await readBody(req)).minutes));
     const mMove = path.match(/^\/api\/seats\/(\d+)\/move$/);
     if (mMove && req.method === 'POST') return send(res, 200, moveSeat(+mMove[1], (await readBody(req)).to_seat_no));
+    const mRes = path.match(/^\/api\/seats\/(\d+)\/reserve$/);
+    if (mRes && req.method === 'POST') return send(res, 200, reserveSeat(+mRes[1], await readBody(req)));
+    const mCanRes = path.match(/^\/api\/seats\/(\d+)\/cancelreserve$/);
+    if (mCanRes && req.method === 'POST') return send(res, 200, cancelReservation(+mCanRes[1]));
     const mChg = path.match(/^\/api\/members\/(\d+)\/charge$/);
     if (mChg && req.method === 'POST') return send(res, 200, chargeMember(+mChg[1], await readBody(req)));
 

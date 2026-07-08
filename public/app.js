@@ -128,6 +128,11 @@ function renderSeats() {
         <div class="u">${who}</div>
         <div class="t" ${timeAttr}>00:00</div>${game}</div>`;
     }
+    if (seat.status === 'reserved') {
+      return `<div class="seat reserved" ${pos} onclick="openSeat(${seat.id})">
+        <div class="sn">${sn3(seat.seat_no)}</div>
+        <div class="u">🕒 예약</div><div class="t" style="font-size:12px">${seat.reservation.name || ''}</div></div>`;
+    }
     return `<div class="seat" ${pos} onclick="openSeat(${seat.id})">
       <div class="sn">${sn3(seat.seat_no)}</div>
       <div class="x">✕</div></div>`;
@@ -411,12 +416,31 @@ window.openSeat = function (seatId) {
       </div>`;
   } else {
     const opts = STATE.plans.map((p) => `<option value="${p.id}">${p.name} (${p.won_per_hour}원/시간)</option>`).join('');
-    body.innerHTML = `
-      <div class="field"><label>요금제</label><select id="planSel">${opts}</select></div>
+    const resv = seat.status === 'reserved'
+      ? `<div class="seat-detail"><div class="sd-row"><span>예약</span><b>${seat.reservation.name || '-'} ${seat.reservation.phone || ''}</b></div>${seat.reservation.memo ? `<div class="sd-row"><span>메모</span><b>${seat.reservation.memo}</b></div>` : ''}</div>`
+      : '';
+    body.innerHTML = resv + `
+      <div class="field"><label>요금제 (비우면 구역 기본요금)</label><select id="planSel"><option value="">자동</option>${opts}</select></div>
       <div class="field"><label>회원 아이디 (비우면 게스트)</label><input id="memLogin" placeholder="예: test01" /></div>
-      <button style="width:100%" onclick="startSeat(${seatId})">착석 시작</button>`;
+      <div class="btn-grid">
+        <button onclick="startSeat(${seatId})">착석 시작</button>
+        ${seat.status === 'reserved'
+          ? `<button class="gray2" onclick="cancelReserve(${seatId})">예약 해제</button>`
+          : `<button class="gray2" onclick="reserveSeatUI(${seatId})">예약 등록</button>`}
+      </div>`;
   }
   $('modal').classList.remove('hidden');
+};
+window.reserveSeatUI = async function (seatId) {
+  const name = prompt('예약자 이름');
+  if (name == null) return;
+  const phone = prompt('연락처 (선택)') || '';
+  try { await api(`/api/seats/${seatId}/reserve`, 'POST', { name, phone }); closeModal(); }
+  catch (e) { alert(e.message); }
+};
+window.cancelReserve = async function (seatId) {
+  try { await api(`/api/seats/${seatId}/cancelreserve`, 'POST', {}); closeModal(); }
+  catch (e) { alert(e.message); }
 };
 window.addTimeSeat = async function (seatId) {
   const min = prompt('충전할 시간(분)을 입력하세요', '60');

@@ -56,7 +56,7 @@ main { padding: 14px 20px 40px; }
 .seatmap.editing .seat { cursor: move; outline: 2px dashed rgba(120,150,255,.4); }
 .seatmap.editing .seat:hover { transform: none; }
 .lg.empty { background: var(--empty); } .lg.guest { background: var(--guest); }
-.lg.member { background: var(--member); } .lg.warn { background: var(--warn); }
+.lg.member { background: var(--member); } .lg.warn { background: var(--warn); } .lg.reserve { background: var(--reserve); }
 .seatmap-wrap { overflow: auto; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 .seatmap { position: relative; }
 
@@ -81,6 +81,9 @@ main { padding: 14px 20px 40px; }
 .seat.guest .sn { color: #5c4200; }
 .seat.warn { background: linear-gradient(160deg, #ff6b70, #e84a50); border-color: #ff8f93; color: #fff; }
 .seat.warn .sn { color: #ffdcdd; }
+.seat.reserved { background: linear-gradient(160deg, #2f9e6a, #248a5b); border-color: #3bbd82; color: #fff; }
+.seat.reserved::before { background: var(--reserve); }
+.seat.reserved .sn { color: #d8f5e6; }
 
 /* 구역 라벨 박스 */
 .zone-box { position: absolute; display: grid; place-items: center; background: rgba(42,52,70,.5); border: 1px solid var(--line); border-radius: 12px; color: var(--muted); font-weight: 800; font-size: 16px; z-index: 0; }
