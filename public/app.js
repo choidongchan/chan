@@ -72,7 +72,7 @@ function connect() {
   const es = new EventSource('/api/events');
   es.onmessage = (e) => {
     const s = JSON.parse(e.data);
-    STATE.seats = s.seats; STATE.plans = s.plans; STATE.summary = s.summary;
+    STATE.seats = s.seats; STATE.plans = s.plans; STATE.summary = s.summary; STATE.zones = s.zones || [];
     renderSummary(); renderSeats();
   };
   es.onerror = () => setTimeout(() => { es.close(); connect(); }, 2000);
@@ -132,9 +132,15 @@ function renderSeats() {
       <div class="sn">${sn3(seat.seat_no)}</div>
       <div class="x">✕</div></div>`;
   }).join('');
-  map.innerHTML = html;
-  map.style.width = (maxX + 1) * (TILE_W + GAP_X) + 'px';
-  map.style.height = (maxY + 1) * (TILE_H + GAP_Y) + 'px';
+  const zoneHtml = (STATE.zones || []).map((z, i) => {
+    maxX = Math.max(maxX, z.x + z.w - 1); maxY = Math.max(maxY, z.y + z.h - 1);
+    const left = z.x * (TILE_W + GAP_X), top = z.y * (TILE_H + GAP_Y);
+    const w = z.w * (TILE_W + GAP_X) - GAP_X, h = z.h * (TILE_H + GAP_Y) - GAP_Y;
+    return `<div class="zone-box" data-zone="${i}" style="left:${left}px;top:${top}px;width:${w}px;height:${h}px" onclick="zoneClick(${i})">${z.label}</div>`;
+  }).join('');
+  map.innerHTML = zoneHtml + html;
+  map.style.width = (maxX + 2) * (TILE_W + GAP_X) + 'px';
+  map.style.height = (maxY + 2) * (TILE_H + GAP_Y) + 'px';
   tickSeats();
 }
 
@@ -160,15 +166,28 @@ window.toggleEdit = function () {
   editMode = !editMode;
   $('editBtn').textContent = editMode ? '✔ 편집 완료' : '🔧 배치 편집';
   $('editBtn').classList.toggle('on', editMode);
+  $('addZoneBtn').style.display = editMode ? '' : 'none';
   $('seatmap').classList.toggle('editing', editMode);
+};
+async function saveZones() { try { await api('/api/settings', 'PUT', { zones: JSON.stringify(STATE.zones) }); renderSeats(); } catch (e) { alert(e.message); } }
+window.addZone = function () {
+  const label = prompt('구역 이름 (예: 흡연실, 카운터)');
+  if (!label) return;
+  STATE.zones = STATE.zones || [];
+  STATE.zones.push({ label, x: 0, y: 0, w: 3, h: 2 });
+  saveZones();
+};
+window.zoneClick = function (i) {
+  if (!editMode) return;
+  if (confirm(`'${STATE.zones[i].label}' 구역을 삭제할까요?`)) { STATE.zones.splice(i, 1); saveZones(); }
 };
 let drag = null;
 $('seatmap').addEventListener('mousedown', (e) => {
   if (!editMode) return;
-  const el = e.target.closest('.seat');
+  const el = e.target.closest('.seat, .zone-box');
   if (!el) return;
   const r = el.getBoundingClientRect();
-  drag = { el, dx: e.clientX - r.left, dy: e.clientY - r.top };
+  drag = { el, dx: e.clientX - r.left, dy: e.clientY - r.top, isZone: el.classList.contains('zone-box') };
   el.style.zIndex = 30; el.style.opacity = '.85';
   e.preventDefault();
 });
@@ -180,13 +199,17 @@ document.addEventListener('mousemove', (e) => {
 });
 document.addEventListener('mouseup', async () => {
   if (!drag) return;
-  const el = drag.el; drag = null;
+  const el = drag.el; const isZone = drag.isZone; drag = null;
   const px = Math.max(0, Math.round(parseFloat(el.style.left) / (TILE_W + GAP_X)));
   const py = Math.max(0, Math.round(parseFloat(el.style.top) / (TILE_H + GAP_Y)));
   el.style.left = px * (TILE_W + GAP_X) + 'px';
   el.style.top = py * (TILE_H + GAP_Y) + 'px';
   el.style.zIndex = ''; el.style.opacity = '';
-  try { await api('/api/seats/' + el.dataset.id, 'PATCH', { pos_x: px, pos_y: py }); } catch (e) { }
+  if (isZone) {
+    const z = STATE.zones[+el.dataset.zone]; if (z) { z.x = px; z.y = py; saveZones(); }
+  } else {
+    try { await api('/api/seats/' + el.dataset.id, 'PATCH', { pos_x: px, pos_y: py }); } catch (e) { }
+  }
 });
 
 // ---- 매출 대시보드 (일/월/연) ----

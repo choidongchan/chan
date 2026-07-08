@@ -88,9 +88,12 @@ function getState() {
     .get(today).t;
   const inUse = seatView.filter((s) => s.status === 'in_use').length;
 
+  let zones = [];
+  try { zones = JSON.parse(getSettings().zones || '[]'); } catch { }
   return {
     seats: seatView,
     plans,
+    zones,
     summary: { total: seats.length, in_use: inUse, empty: seats.length - inUse, sales_today: salesToday },
     server_time: nowISO(),
   };
