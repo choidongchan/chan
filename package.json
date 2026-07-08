@@ -4,7 +4,8 @@
   "description": "PLAYON - PC방 관리 프로그램 (서버 + 카운터 대시보드 + 좌석 클라이언트)",
   "type": "module",
   "scripts": {
-    "start": "node run.mjs"
+    "start": "node run.mjs",
+    "watch": "node watch.mjs"
   },
   "engines": {
     "node": ">=20"

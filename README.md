@@ -58,11 +58,15 @@ npm start            # 서버 실행 → http://localhost:8080
 
 ## 개발 → 배포 흐름 (Windows, 더블클릭)
 
-1. **`start.bat`** — 최신 버전 받고 서버 실행 (개발/미리보기)
-2. VS Code로 `chan` 폴더 열어 코드 수정
-3. **`push.bat`** — 수정사항을 git에 올리기 → (Render 연결 시) 자동 배포
+**가장 편한 방법 — `dev.bat` 더블클릭 (저장하면 자동 배포):**
+1. `dev.bat` 더블클릭 → 로컬 미리보기 서버 + 자동배포 감시 시작
+2. VS Code로 코드 수정하고 **저장(Ctrl+S)만** 하면 →
+   자동으로 git에 올라가고 → (Render 연결 시) 홈페이지에 자동 반영
+3. push 버튼도, 명령어도 필요 없음
 
-> 최초 1회: 첫 push 때 GitHub 로그인, 배포는 `DEPLOY.md` 참고(Render 연결).
+수동 방법: `start.bat`(실행) / `push.bat`(직접 올리기)
+
+> 최초 1회만: ① 첫 실행 때 GitHub 로그인 ② Render 연결(`DEPLOY.md`). 이후 완전 자동.
 
 ## 폴더 구조
 
