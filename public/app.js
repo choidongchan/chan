@@ -560,7 +560,7 @@ document.querySelectorAll('#salesTabs .st').forEach((b) => b.addEventListener('c
 $('gamesDate').addEventListener('change', loadGames);
 
 // ---- 설정: 매장/요금제/쿠폰/근무자 ----
-async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); loadStaff(); loadAttendance(); }
+async function loadSettings() { loadShop(); loadPlans(); loadZoneRates(); loadCoupons(); loadStaff(); loadAttendance(); }
 
 async function loadAttendance() {
   const rows = (await api('/api/attendance')).map((a) => `<tr>
@@ -606,6 +606,23 @@ $('shopForm').addEventListener('submit', async (e) => {
   try { await api('/api/settings', 'PUT', Object.fromEntries(f)); alert('저장됨'); }
   catch (err) { alert(err.message); }
 });
+
+async function loadZoneRates() {
+  const [plans, settings] = await Promise.all([api('/api/plans'), api('/api/settings')]);
+  let map = {}; try { map = JSON.parse(settings.zone_rates || '{}'); } catch { }
+  const zones = [...new Set((STATE.seats || []).map((s) => s.zone))];
+  window._zoneRateMap = map;
+  $('zoneRates').innerHTML = zones.map((z) => {
+    const opts = `<option value="">기본요금</option>` + plans.map((p) => `<option value="${p.id}" ${String(map[z]) === String(p.id) ? 'selected' : ''}>${p.name} (${p.won_per_hour}원/시간)</option>`).join('');
+    return `<div class="inline-form" style="margin-bottom:8px"><span style="min-width:80px;align-self:center;font-weight:700">${z}</span><select onchange="setZoneRate('${z}',this.value)">${opts}</select></div>`;
+  }).join('') || '<div class="note">좌석 구역 정보가 없습니다.</div>';
+}
+window.setZoneRate = async function (zone, planId) {
+  const map = window._zoneRateMap || {};
+  if (planId) map[zone] = planId; else delete map[zone];
+  window._zoneRateMap = map;
+  try { await api('/api/settings', 'PUT', { zone_rates: JSON.stringify(map) }); } catch (e) { alert(e.message); }
+};
 
 async function loadPlans() {
   const plans = await api('/api/plans');

@@ -113,6 +113,11 @@ function startSession(seatId, { member_login, rate_plan_id } = {}) {
   }
   let planId = rate_plan_id;
   if (!planId) {
+    let zoneRates = {};
+    try { zoneRates = JSON.parse(getSettings().zone_rates || '{}'); } catch { }
+    if (zoneRates[seat.zone]) planId = +zoneRates[seat.zone];
+  }
+  if (!planId) {
     const def = db.prepare('SELECT * FROM rate_plans WHERE is_default=1').get()
       || db.prepare('SELECT * FROM rate_plans LIMIT 1').get();
     planId = def.id;
