@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- 현금 시재 점검
+CREATE TABLE IF NOT EXISTS cash_counts (
+  id       INTEGER PRIMARY KEY,
+  ts       TEXT NOT NULL,
+  actor    TEXT,
+  counted  INTEGER NOT NULL,
+  expected INTEGER NOT NULL,
+  memo     TEXT
+);
+
 -- 시스템 로그(운영 기록)
 CREATE TABLE IF NOT EXISTS logs (
   id     INTEGER PRIMARY KEY,

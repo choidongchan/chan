@@ -459,6 +459,25 @@ window.openGoods = function () {
     <button style="width:100%" onclick="sellGoods()">판매 등록</button>`;
   $('modal').classList.remove('hidden');
 };
+window.openCash = async function () {
+  const c = await api('/api/cash');
+  const hist = c.history.map((h) => `<tr><td>${fmtDT(h.ts)}</td><td>${h.actor}</td><td class="r">${won(h.counted)}</td><td class="r">${won(h.expected)}</td><td class="r" style="color:${h.counted - h.expected < 0 ? 'var(--warn)' : 'var(--ok)'}">${won(h.counted - h.expected)}</td></tr>`).join('') || '<tr><td colspan=5 class="muted">기록 없음</td></tr>';
+  $('modalTitle').textContent = '현금 시재 관리';
+  $('modalBody').innerHTML = `
+    <div class="seat-detail">
+      <div class="sd-row"><span>오늘 현금 매출(예상 시재)</span><b>${won(c.expected)}</b></div>
+    </div>
+    <div class="field"><label>실제 보유 현금(원)</label><input id="cashCounted" type="number" placeholder="${c.expected}" /></div>
+    <div class="field"><label>메모</label><input id="cashMemo" placeholder="교대/마감 등" /></div>
+    <button style="width:100%" onclick="saveCash()">시재 기록</button>
+    <div style="font-weight:700;margin:14px 0 6px;color:var(--muted)">점검 이력</div>
+    <div style="max-height:160px;overflow:auto"><table class="tbl"><thead><tr><th>시각</th><th>담당</th><th class="r">실제</th><th class="r">예상</th><th class="r">차액</th></tr></thead><tbody>${hist}</tbody></table></div>`;
+  $('modal').classList.remove('hidden');
+};
+window.saveCash = async function () {
+  try { await api('/api/cash', 'POST', { counted: +$('cashCounted').value, memo: $('cashMemo').value }); closeModal(); alert('시재 기록됨'); }
+  catch (e) { alert(e.message); }
+};
 window.sellGoods = async function () {
   try {
     await api('/api/goods', 'POST', {

@@ -339,6 +339,18 @@ function deletePlan(id) {
   return { ok: true };
 }
 
+// ---- 현금 시재 ----
+function cashExpectedToday() {
+  return db.prepare("SELECT COALESCE(SUM(amount),0) t FROM sales WHERE method='cash' AND substr(created_at,1,10)=?").get(nowISO().slice(0, 10)).t;
+}
+function recordCash({ counted, memo }) {
+  const expected = cashExpectedToday();
+  db.prepare('INSERT INTO cash_counts (ts, actor, counted, expected, memo) VALUES (?,?,?,?,?)')
+    .run(nowISO(), currentActor, +counted, expected, memo || '');
+  writeLog('현금시재점검', `실 ${fmtWon(+counted)} / 예상 ${fmtWon(expected)}`);
+  return { ok: true };
+}
+
 // ---- 근무자(직원) 관리 ----
 function listStaff() {
   return db.prepare('SELECT id, login, name, role, created_at FROM staff ORDER BY id').all();
@@ -644,6 +656,12 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') return send(res, 200, createCoupons(await readBody(req)));
     }
     if (path === '/api/coupons/redeem' && req.method === 'POST') return send(res, 200, redeemCoupon(await readBody(req)));
+
+    // 현금 시재
+    if (path === '/api/cash') {
+      if (req.method === 'GET') return send(res, 200, { expected: cashExpectedToday(), history: db.prepare('SELECT * FROM cash_counts ORDER BY id DESC LIMIT 50').all() });
+      if (req.method === 'POST') return send(res, 200, recordCash(await readBody(req)));
+    }
 
     // 근무자
     if (path === '/api/staff') {
