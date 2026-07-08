@@ -339,6 +339,17 @@ function deletePlan(id) {
   return { ok: true };
 }
 
+// ---- 출퇴근 ----
+function clock(type) {
+  if (type !== 'in' && type !== 'out') throw new Error('구분 오류');
+  db.prepare('INSERT INTO attendance (actor, type, ts) VALUES (?,?,?)').run(currentActor, type, nowISO());
+  writeLog(type === 'in' ? '출근' : '퇴근');
+  return { ok: true };
+}
+function listAttendance() {
+  return db.prepare("SELECT * FROM attendance WHERE substr(ts,1,10)=? ORDER BY id DESC").all(nowISO().slice(0, 10));
+}
+
 // ---- 현금 시재 ----
 function cashExpectedToday() {
   return db.prepare("SELECT COALESCE(SUM(amount),0) t FROM sales WHERE method='cash' AND substr(created_at,1,10)=?").get(nowISO().slice(0, 10)).t;
@@ -669,6 +680,12 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') return send(res, 200, createCoupons(await readBody(req)));
     }
     if (path === '/api/coupons/redeem' && req.method === 'POST') return send(res, 200, redeemCoupon(await readBody(req)));
+
+    // 출퇴근
+    if (path === '/api/attendance') {
+      if (req.method === 'GET') return send(res, 200, listAttendance());
+      if (req.method === 'POST') return send(res, 200, clock((await readBody(req)).type));
+    }
 
     // 현금 시재
     if (path === '/api/cash') {

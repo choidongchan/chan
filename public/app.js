@@ -512,7 +512,16 @@ document.querySelectorAll('#salesTabs .st').forEach((b) => b.addEventListener('c
 $('gamesDate').addEventListener('change', loadGames);
 
 // ---- 설정: 매장/요금제/쿠폰/근무자 ----
-async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); loadStaff(); }
+async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); loadStaff(); loadAttendance(); }
+
+async function loadAttendance() {
+  const rows = (await api('/api/attendance')).map((a) => `<tr>
+    <td>${fmtDT(a.ts)}</td><td>${a.actor}</td>
+    <td>${a.type === 'in' ? '<span class="pill on">출근</span>' : '<span class="pill off">퇴근</span>'}</td></tr>`).join('');
+  $('attendTable').innerHTML = `<table class="tbl"><thead><tr><th>시각</th><th>담당</th><th>구분</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=3 class="muted">오늘 기록 없음</td></tr>'}</tbody></table>`;
+}
+window.clockInOut = async (type) => { try { await api('/api/attendance', 'POST', { type }); loadAttendance(); alert(type === 'in' ? '출근 기록됨' : '퇴근 기록됨'); } catch (e) { alert(e.message); } };
 
 async function loadStaff() {
   const rows = (await api('/api/staff')).map((s) => `<tr>

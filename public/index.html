@@ -157,6 +157,13 @@
             <button type="submit">발급</button>
           </form>
           <div id="couponsTable"></div>
+          <h4>출퇴근</h4>
+          <div class="wc-actions" style="margin-bottom:10px">
+            <button onclick="clockInOut('in')">출근</button>
+            <button class="gray" onclick="clockInOut('out')">퇴근</button>
+          </div>
+          <div id="attendTable"></div>
+
           <h4>근무자 관리</h4>
           <form id="staffForm" class="inline-form">
             <input name="login" placeholder="아이디" required />

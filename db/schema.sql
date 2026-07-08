@@ -113,6 +113,14 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- 출퇴근 기록
+CREATE TABLE IF NOT EXISTS attendance (
+  id    INTEGER PRIMARY KEY,
+  actor TEXT,
+  type  TEXT NOT NULL,   -- in(출근) / out(퇴근)
+  ts    TEXT NOT NULL
+);
+
 -- 현금 시재 점검
 CREATE TABLE IF NOT EXISTS cash_counts (
   id       INTEGER PRIMARY KEY,
