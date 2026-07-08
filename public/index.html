@@ -150,6 +150,15 @@
             <button type="submit">발급</button>
           </form>
           <div id="couponsTable"></div>
+          <h4>근무자 관리</h4>
+          <form id="staffForm" class="inline-form">
+            <input name="login" placeholder="아이디" required />
+            <input name="name" placeholder="이름" />
+            <input name="password" type="password" placeholder="비밀번호" required />
+            <select name="role"><option value="staff">근무자</option><option value="admin">관리자</option></select>
+            <button type="submit">추가</button>
+          </form>
+          <div id="staffTable"></div>
         </div>
 
       </div>

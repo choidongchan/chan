@@ -454,8 +454,26 @@ document.querySelectorAll('#salesTabs .st').forEach((b) => b.addEventListener('c
 }));
 $('gamesDate').addEventListener('change', loadGames);
 
-// ---- 설정: 매장/요금제/쿠폰 ----
-async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); }
+// ---- 설정: 매장/요금제/쿠폰/근무자 ----
+async function loadSettings() { loadShop(); loadPlans(); loadCoupons(); loadStaff(); }
+
+async function loadStaff() {
+  const rows = (await api('/api/staff')).map((s) => `<tr>
+      <td>${s.login}</td><td>${s.name || '-'}</td>
+      <td>${s.role === 'admin' ? '<span class="pill red">관리자</span>' : '<span class="pill off">근무자</span>'}</td>
+      <td>${fmtDate(s.created_at)}</td>
+      <td><button class="mini gray" onclick="delStaff(${s.id})">삭제</button></td>
+    </tr>`).join('');
+  $('staffTable').innerHTML = `<table class="tbl"><thead><tr><th>아이디</th><th>이름</th><th>권한</th><th>등록일</th><th>관리</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+window.delStaff = async (id) => { if (!confirm('삭제할까요?')) return; try { await api('/api/staff/' + id, 'DELETE'); loadStaff(); } catch (e) { alert(e.message); } };
+document.getElementById('staffForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try { await api('/api/staff', 'POST', Object.fromEntries(f)); e.target.reset(); loadStaff(); }
+  catch (err) { alert(err.message); }
+});
 
 async function loadShop() {
   const s = await api('/api/settings');

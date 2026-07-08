@@ -323,6 +323,25 @@ function deletePlan(id) {
   return { ok: true };
 }
 
+// ---- 근무자(직원) 관리 ----
+function listStaff() {
+  return db.prepare('SELECT id, login, name, role, created_at FROM staff ORDER BY id').all();
+}
+function createStaff({ login, name, password, role }) {
+  if (!login || !password) throw new Error('아이디/비밀번호 필요');
+  if (db.prepare('SELECT 1 FROM staff WHERE login=?').get(login)) throw new Error('이미 있는 아이디');
+  db.prepare('INSERT INTO staff (login, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
+    .run(login, name ?? '', hashPassword(password), role === 'admin' ? 'admin' : 'staff', nowISO());
+  return { ok: true };
+}
+function deleteStaff(id) {
+  const admins = db.prepare("SELECT COUNT(*) c FROM staff WHERE role='admin'").get().c;
+  const target = db.prepare('SELECT * FROM staff WHERE id=?').get(id);
+  if (target?.role === 'admin' && admins <= 1) throw new Error('마지막 관리자는 삭제할 수 없습니다');
+  db.prepare('DELETE FROM staff WHERE id=?').run(id);
+  return { ok: true };
+}
+
 // ---- 쿠폰 ----
 function createCoupons({ count = 1, kind = 'minutes', value }) {
   if (!value || value <= 0) throw new Error('값 오류');
@@ -595,6 +614,14 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') return send(res, 200, createCoupons(await readBody(req)));
     }
     if (path === '/api/coupons/redeem' && req.method === 'POST') return send(res, 200, redeemCoupon(await readBody(req)));
+
+    // 근무자
+    if (path === '/api/staff') {
+      if (req.method === 'GET') return send(res, 200, listStaff());
+      if (req.method === 'POST') return send(res, 200, createStaff(await readBody(req)));
+    }
+    const mStaff = path.match(/^\/api\/staff\/(\d+)$/);
+    if (mStaff && req.method === 'DELETE') return send(res, 200, deleteStaff(+mStaff[1]));
 
     // 설정
     if (path === '/api/settings') {
