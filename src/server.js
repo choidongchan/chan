@@ -555,8 +555,9 @@ const server = http.createServer(async (req, res) => {
       const seat = db.prepare('SELECT * FROM seats WHERE seat_no=?').get(seatNo);
       if (!seat) return send(res, 404, { error: '좌석 없음' });
       online.set(seatNo, Date.now());
+      const notice = getSettings().notice || '';
       const s = db.prepare("SELECT * FROM sessions WHERE seat_id=? AND status='active'").get(seat.id);
-      if (!s) return send(res, 200, { seat_no: seatNo, in_use: false });
+      if (!s) return send(res, 200, { seat_no: seatNo, in_use: false, notice });
       const plan = db.prepare('SELECT * FROM rate_plans WHERE id=?').get(s.rate_plan_id);
       const mins = elapsedMinutes(s.started_at);
       let remain = null, charge = null, member = null;
@@ -566,7 +567,7 @@ const server = http.createServer(async (req, res) => {
         remain = m ? Math.max(0, m.balance_minutes - mins) : null;
       } else charge = calcCharge(plan, mins);
       return send(res, 200, {
-        seat_no: seatNo, in_use: true, kind: s.kind, member,
+        seat_no: seatNo, in_use: true, kind: s.kind, member, notice,
         minutes: mins, remain_minutes: remain, running_charge: charge, plan: plan?.name,
       });
     }
@@ -700,6 +701,12 @@ const server = http.createServer(async (req, res) => {
     }
     const mStaff = path.match(/^\/api\/staff\/(\d+)$/);
     if (mStaff && req.method === 'DELETE') return send(res, 200, deleteStaff(+mStaff[1]));
+
+    // 전체 공지 (좌석 화면에 표시)
+    if (path === '/api/notice') {
+      if (req.method === 'GET') { const s = getSettings(); return send(res, 200, { notice: s.notice || '', notice_ts: s.notice_ts || '' }); }
+      if (req.method === 'POST') { const b = await readBody(req); putSettings({ notice: b.message || '', notice_ts: nowISO() }); writeLog('전체공지', b.message || '(해제)'); broadcast(); return send(res, 200, { ok: true }); }
+    }
 
     // 설정
     if (path === '/api/settings') {

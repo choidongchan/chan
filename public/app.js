@@ -522,6 +522,12 @@ async function loadAttendance() {
     <tbody>${rows || '<tr><td colspan=3 class="muted">오늘 기록 없음</td></tr>'}</tbody></table>`;
 }
 window.clockInOut = async (type) => { try { await api('/api/attendance', 'POST', { type }); loadAttendance(); alert(type === 'in' ? '출근 기록됨' : '퇴근 기록됨'); } catch (e) { alert(e.message); } };
+document.getElementById('noticeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try { await api('/api/notice', 'POST', { message: $('noticeInput').value }); alert('전체 좌석에 공지를 전송했습니다.'); }
+  catch (err) { alert(err.message); }
+});
+window.clearNotice = async () => { try { await api('/api/notice', 'POST', { message: '' }); $('noticeInput').value = ''; alert('공지를 해제했습니다.'); } catch (e) { alert(e.message); } };
 
 async function loadStaff() {
   const rows = (await api('/api/staff')).map((s) => `<tr>

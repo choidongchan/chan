@@ -13,6 +13,7 @@ const fmt = (m) => {
 async function poll() {
   try {
     const r = await fetch(`/api/seat/status?seat_no=${SEAT}`).then((x) => x.json());
+    showNotice(r.notice);
     if (r.in_use) {
       lock(false);
       $('inUse').style.display = 'block';
@@ -38,6 +39,12 @@ async function poll() {
 }
 
 function lock(on) { $('lock').classList.toggle('hidden', !on); }
+function showNotice(msg) {
+  let el = document.getElementById('notice');
+  if (!el) { el = document.createElement('div'); el.id = 'notice'; document.body.appendChild(el); }
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+}
 
 window.login = async function () {
   const id = $('memberId').value.trim();

@@ -157,6 +157,13 @@
             <button type="submit">발급</button>
           </form>
           <div id="couponsTable"></div>
+          <h4>전체 공지 (좌석 화면에 표시)</h4>
+          <form id="noticeForm" class="inline-form">
+            <input name="message" id="noticeInput" placeholder="예: 오늘 22시까지 요금 20% 할인!" />
+            <button type="submit">공지 전송</button>
+            <button type="button" class="gray" onclick="clearNotice()">해제</button>
+          </form>
+
           <h4>출퇴근</h4>
           <div class="wc-actions" style="margin-bottom:10px">
             <button onclick="clockInOut('in')">출근</button>
