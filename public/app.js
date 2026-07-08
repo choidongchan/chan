@@ -251,7 +251,8 @@ async function loadMembers() {
       <td>${fmtDate(m.last_visit_at)}</td>
       <td>${m.blacklist ? '<span class="pill red">차단</span>' : '<span class="pill off">-</span>'}</td>
       <td>${m.login_block ? '<span class="pill red">금지</span>' : '<span class="pill off">-</span>'}</td>
-      <td><button class="mini" onclick="chargeMember(${m.id})">시간충전</button>
+      <td><button class="mini" onclick="memberDetail(${m.id})">상세</button>
+          <button class="mini" onclick="chargeMember(${m.id})">충전</button>
           <button class="mini gray" onclick="toggleBlack(${m.id},${m.blacklist ? 0 : 1})">${m.blacklist ? '해제' : '블랙'}</button></td>
     </tr>`).join('');
   $('membersTable').innerHTML = `<table class="tbl">
@@ -259,6 +260,26 @@ async function loadMembers() {
     <tbody>${rows || '<tr><td colspan=11 class="muted">회원 없음</td></tr>'}</tbody></table>`;
 }
 window.toggleBlack = async (id, v) => { try { await api('/api/members/' + id, 'PATCH', { blacklist: v }); loadMembers(); } catch (e) { alert(e.message); } };
+window.memberDetail = async function (id) {
+  const d = await api('/api/members/' + id + '/detail');
+  const m = d.member;
+  const typeL = { seat: 'PC이용', goods: '상품', charge: '충전' };
+  const sess = d.sessions.map((s) => `<tr><td>${s.seat_no}</td><td>${fmtDT(s.started_at)}</td><td>${s.ended_at ? fmtDT(s.ended_at) : '이용중'}</td><td>${s.minutes == null ? '-' : secStr(s.minutes)}</td><td class="r">${won(s.amount)}</td></tr>`).join('') || '<tr><td colspan=5 class="muted">없음</td></tr>';
+  const sale = d.sales.map((s) => `<tr><td>${typeL[s.type] || s.type}</td><td>${s.name || '-'}</td><td class="r">${won(s.amount)}</td><td>${fmtDT(s.created_at)}</td></tr>`).join('') || '<tr><td colspan=4 class="muted">없음</td></tr>';
+  $('modalTitle').textContent = `${m.name || m.login_id} · ${m.nickname || ''}`;
+  $('modalBody').innerHTML = `
+    <div class="seat-detail">
+      <div class="sd-row"><span>아이디</span><b>${m.login_id}</b></div>
+      <div class="sd-row"><span>연락처</span><b>${m.phone || '-'}</b></div>
+      <div class="sd-row"><span>남은시간 / 선불금</span><b>${secStr(m.balance_minutes)} / ${won(m.balance_cash)}</b></div>
+      <div class="sd-row"><span>가입일 / 최근방문</span><b>${fmtDate(m.created_at)} / ${fmtDate(m.last_visit_at)}</b></div>
+    </div>
+    <div style="font-weight:700;margin:6px 0 6px;color:var(--muted)">이용 내역</div>
+    <div style="max-height:150px;overflow:auto"><table class="tbl"><thead><tr><th>PC</th><th>시작</th><th>종료</th><th>이용</th><th class="r">요금</th></tr></thead><tbody>${sess}</tbody></table></div>
+    <div style="font-weight:700;margin:12px 0 6px;color:var(--muted)">결제/충전 내역</div>
+    <div style="max-height:150px;overflow:auto"><table class="tbl"><thead><tr><th>구분</th><th>내용</th><th class="r">금액</th><th>시각</th></tr></thead><tbody>${sale}</tbody></table></div>`;
+  $('modal').classList.remove('hidden');
+};
 window.focusMemberForm = () => $('#memberForm [name=login_id]')?.focus();
 
 // ---- 이용 내역 ----

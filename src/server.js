@@ -544,6 +544,17 @@ const server = http.createServer(async (req, res) => {
     }
     const mMem = path.match(/^\/api\/members\/(\d+)$/);
     if (mMem && req.method === 'PATCH') return send(res, 200, updateMember(+mMem[1], await readBody(req)));
+    const mMemD = path.match(/^\/api\/members\/(\d+)\/detail$/);
+    if (mMemD) {
+      const id = +mMemD[1];
+      const m = db.prepare('SELECT * FROM members WHERE id=?').get(id);
+      if (!m) return send(res, 404, { error: '회원 없음' });
+      const sessions = db.prepare(
+        `SELECT s.started_at, s.ended_at, s.amount, seat.seat_no FROM sessions s JOIN seats seat ON seat.id=s.seat_id WHERE s.member_id=? ORDER BY s.id DESC LIMIT 50`
+      ).all(id).map((r) => ({ seat_no: r.seat_no, started_at: r.started_at, ended_at: r.ended_at, amount: r.amount, minutes: r.ended_at ? elapsedMinutes(r.started_at, r.ended_at) : null }));
+      const sales = db.prepare('SELECT type, name, amount, method, created_at FROM sales WHERE member_id=? ORDER BY id DESC LIMIT 50').all(id);
+      return send(res, 200, { member: m, sessions, sales });
+    }
     if (path === '/api/history') return send(res, 200, historyList());
 
     const mStart = path.match(/^\/api\/seats\/(\d+)\/start$/);
