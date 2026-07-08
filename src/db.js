@@ -34,6 +34,7 @@ export function migrate() {
   ensureColumn('members', 'blacklist', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('members', 'login_block', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('sales', 'name', 'TEXT');
+  ensureColumn('products', 'stock', 'INTEGER NOT NULL DEFAULT 0');
 }
 migrate();
 
@@ -106,10 +107,10 @@ export function seedIfEmpty() {
 
   const prodCount = db.prepare('SELECT COUNT(*) c FROM products').get().c;
   if (prodCount === 0) {
-    const p = db.prepare('INSERT INTO products (category, name, price) VALUES (?,?,?)');
-    [['음료', '콜라', 2000], ['음료', '사이다', 2000], ['음료', '생수 500ml', 1000],
-     ['먹거리', '컵라면', 1500], ['먹거리', '핫바', 1800], ['먹거리', '치킨너겟', 5000],
-     ['이용권', '1시간 이용권', 1200], ['이용권', '3시간 이용권', 3000]]
+    const p = db.prepare('INSERT INTO products (category, name, price, stock) VALUES (?,?,?,?)');
+    [['음료', '콜라', 2000, 48], ['음료', '사이다', 2000, 36], ['음료', '생수 500ml', 1000, 60],
+     ['먹거리', '컵라면', 1500, 30], ['먹거리', '핫바', 1800, 24], ['먹거리', '치킨너겟', 5000, 12],
+     ['이용권', '1시간 이용권', 1200, 999], ['이용권', '3시간 이용권', 3000, 999]]
       .forEach((r) => p.run(...r));
   }
 }

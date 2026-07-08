@@ -349,15 +349,20 @@ async function loadHistory() {
 async function loadProducts() {
   const rows = (await api('/api/products')).map((p) => `<tr>
       <td>${p.category}</td><td>${p.name}</td><td class="r">${won(p.price)}</td>
+      <td class="r">${p.stock <= 0 ? `<span class="pill red">${p.stock}</span>` : (p.stock <= 5 ? `<span class="pill amber">${p.stock}</span>` : p.stock)}</td>
       <td>${p.on_sale ? '<span class="pill on">판매</span>' : '<span class="pill off">중지</span>'}</td>
-      <td>${p.exposed ? '노출' : '숨김'}</td>
-      <td>${p.sold_out ? '<span class="pill red">매진</span>' : '<span class="pill off">항시판매</span>'}</td>
-      <td><button class="mini gray" onclick="delProduct(${p.id})">삭제</button></td>
+      <td><button class="mini" onclick="stockIn(${p.id})">입고</button>
+          <button class="mini gray" onclick="delProduct(${p.id})">삭제</button></td>
     </tr>`).join('');
   $('productsTable').innerHTML = `<table class="tbl">
-    <thead><tr><th>분류</th><th>상품 이름</th><th class="r">판매 금액</th><th>판매 여부</th><th>판매 노출</th><th>매진 설정</th><th>관리</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan=7 class="muted">상품 없음</td></tr>'}</tbody></table>`;
+    <thead><tr><th>분류</th><th>상품 이름</th><th class="r">판매 금액</th><th class="r">재고</th><th>판매 여부</th><th>관리</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan=6 class="muted">상품 없음</td></tr>'}</tbody></table>`;
 }
+window.stockIn = async (id) => {
+  const q = prompt('입고 수량 (차감은 음수)', '10');
+  if (q == null) return;
+  try { await api('/api/products/' + id + '/stock', 'POST', { delta: +q }); loadProducts(); } catch (e) { alert(e.message); }
+};
 window.delProduct = async (id) => { if (!confirm('삭제할까요?')) return; try { await api('/api/products/' + id, 'DELETE'); loadProducts(); } catch (e) { alert(e.message); } };
 window.openProductForm = () => {
   $('modalTitle').textContent = '새 상품 등록';
@@ -365,12 +370,13 @@ window.openProductForm = () => {
     <div class="field"><label>분류</label><input id="pCat" placeholder="음료/먹거리/이용권" /></div>
     <div class="field"><label>상품 이름</label><input id="pName" /></div>
     <div class="field"><label>판매 금액(원)</label><input id="pPrice" type="number" /></div>
+    <div class="field"><label>초기 재고</label><input id="pStock" type="number" value="0" /></div>
     <button style="width:100%" onclick="addProduct()">등록</button>`;
   $('modal').classList.remove('hidden');
 };
 window.addProduct = async () => {
   try {
-    await api('/api/products', 'POST', { category: $('pCat').value, name: $('pName').value, price: +$('pPrice').value });
+    await api('/api/products', 'POST', { category: $('pCat').value, name: $('pName').value, price: +$('pPrice').value, stock: +$('pStock').value });
     closeModal(); loadProducts();
   } catch (e) { alert(e.message); }
 };
@@ -513,7 +519,7 @@ window.openGoods = async function () {
   try {
     const prods = await api('/api/products');
     grid = prods.filter((p) => p.on_sale && !p.sold_out).map((p) =>
-      `<button class="prod-btn" onclick="quickSell('${(p.name || '').replace(/'/g, '')}',${p.price})">${p.name}<span>${won(p.price)}</span></button>`).join('');
+      `<button class="prod-btn" onclick="quickSell('${(p.name || '').replace(/'/g, '')}',${p.price},${p.id})">${p.name}<span>${won(p.price)}${p.stock <= 5 ? ` · 재고${p.stock}` : ''}</span></button>`).join('');
   } catch { }
   $('modalTitle').textContent = '상품 판매';
   $('modalBody').innerHTML = `
@@ -525,8 +531,8 @@ window.openGoods = async function () {
     <button style="width:100%" onclick="sellGoods()">판매 등록</button>`;
   $('modal').classList.remove('hidden');
 };
-window.quickSell = async (name, price) => {
-  try { await api('/api/goods', 'POST', { name, amount: price }); closeModal(); alert(`${name} 판매 등록 (${won(price)})`); }
+window.quickSell = async (name, price, product_id) => {
+  try { await api('/api/goods', 'POST', { name, amount: price, product_id }); closeModal(); alert(`${name} 판매 등록 (${won(price)})`); }
   catch (e) { alert(e.message); }
 };
 window.openCash = async function () {

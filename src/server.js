@@ -276,21 +276,28 @@ function reportGame(seatNo, { proc_name, game_code }) {
 }
 
 // 상품 판매(음료/과자 등) 매출 기록
-function sellGoods({ name, amount, method = 'cash', member_id = null }) {
+function sellGoods({ name, amount, method = 'cash', member_id = null, product_id = null }) {
   const won = +amount;
   if (!won || won <= 0) throw new Error('금액 오류');
   db.prepare('INSERT INTO sales (member_id, type, amount, method, name, created_at) VALUES (?,?,?,?,?,?)')
     .run(member_id, 'goods', won, method, name ?? '상품', nowISO());
+  if (product_id) db.prepare('UPDATE products SET stock = stock - 1 WHERE id=?').run(product_id);
   writeLog('상품판매', `${name ?? '상품'} · ${fmtWon(won)}`);
   broadcast();
   return { ok: true };
 }
+function adjustStock(id, delta) {
+  db.prepare('UPDATE products SET stock = stock + ? WHERE id=?').run(delta | 0, id);
+  const p = db.prepare('SELECT * FROM products WHERE id=?').get(id);
+  writeLog('재고조정', `${p?.name} ${delta > 0 ? '+' : ''}${delta} → ${p?.stock}`);
+  return p;
+}
 
 // 상품 관리
-function createProduct({ category, name, price }) {
+function createProduct({ category, name, price, stock }) {
   if (!name) throw new Error('상품명 필요');
-  const info = db.prepare('INSERT INTO products (category, name, price) VALUES (?,?,?)')
-    .run(category || '기타', name, +price || 0);
+  const info = db.prepare('INSERT INTO products (category, name, price, stock) VALUES (?,?,?,?)')
+    .run(category || '기타', name, +price || 0, +stock || 0);
   return db.prepare('SELECT * FROM products WHERE id=?').get(info.lastInsertRowid);
 }
 function deleteProduct(id) { db.prepare('DELETE FROM products WHERE id=?').run(id); return { ok: true }; }
@@ -699,6 +706,8 @@ const server = http.createServer(async (req, res) => {
     }
     const mProd = path.match(/^\/api\/products\/(\d+)$/);
     if (mProd && req.method === 'DELETE') return send(res, 200, deleteProduct(+mProd[1]));
+    const mStock = path.match(/^\/api\/products\/(\d+)\/stock$/);
+    if (mStock && req.method === 'POST') return send(res, 200, adjustStock(+mStock[1], (await readBody(req)).delta));
     if (path === '/api/orders') return send(res, 200, orderList());
 
     // 요금제
