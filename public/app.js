@@ -36,7 +36,8 @@ window.logout = async function () {
 };
 
 // ---- 메뉴: 좌석현황(다크 뷰) / 나머지(밝은 팝업) ----
-const POP_TITLES = { members: '회원 관리', products: '상품 관리', history: '이용내역', orders: '주문 내역', sales: '매출', games: '유료게임', settings: '설정' };
+const POP_TITLES = { members: '회원 관리', products: '상품 관리', history: '이용내역', orders: '주문 내역', sales: '매출', games: '유료게임', kiosk: '키오스크 관제', settings: '설정' };
+window.kioskAction = (name) => alert(`[${name}] 요청을 키오스크로 전송했습니다.\n(실제 키오스크 연동 시 원격 실행됩니다)`);
 document.querySelectorAll('.menu .m').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.menu .m').forEach((b) => b.classList.remove('active'));
