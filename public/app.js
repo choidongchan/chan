@@ -147,19 +147,20 @@ function tickSeats() {
 }
 setInterval(tickSeats, 1000);
 
-// ---- 매출 대시보드 ----
+// ---- 매출 대시보드 (일/월/연) ----
+let salesPeriod = 'day';
+const PERIOD_LABEL = { day: '일', month: '월', year: '연' };
 async function loadSales() {
-  const date = $('salesDate').value || undefined;
-  const r = await api('/api/report/sales' + (date ? `?date=${date}` : ''));
+  const r = await api('/api/report/sales?period=' + salesPeriod);
   const diffSign = r.diff > 0 ? '▲' : r.diff < 0 ? '▼' : '-';
   const diffColor = r.diff >= 0 ? '#16a34a' : '#ef4444';
   const cards = `
     <div class="cards">
-      <div class="card big"><div class="ci">💰</div><div class="cl">일 매출 총합계</div><div class="cv">${won(r.total)}</div></div>
+      <div class="card big"><div class="ci">💰</div><div class="cl">${PERIOD_LABEL[r.period]} 매출 총합계</div><div class="cv">${won(r.total)}</div></div>
       <div class="card"><div class="cl">상품 판매</div><div class="cv">${won(r.goods_total)}</div></div>
       <div class="card"><div class="cl">PC 이용</div><div class="cv">${won(r.seat_total)}</div></div>
       <div class="card"><div class="cl">이용자 현황</div><div class="cv">${r.user_count}명</div></div>
-      <div class="card"><div class="cl">전일 대비</div><div class="cv" style="color:${diffColor}">${diffSign} ${won(Math.abs(r.diff))}</div></div>
+      <div class="card"><div class="cl">전${PERIOD_LABEL[r.period]} 대비</div><div class="cv" style="color:${diffColor}">${diffSign} ${won(Math.abs(r.diff))}</div></div>
     </div>`;
   const top = `
     <div class="panel"><div class="ph">상품판매 TOP 5</div>
@@ -411,7 +412,10 @@ $('memberForm').addEventListener('submit', async (e) => {
     e.target.reset(); loadMembers();
   } catch (err) { alert(err.message); }
 });
-$('salesDate').addEventListener('change', loadSales);
+document.querySelectorAll('#salesTabs .st').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#salesTabs .st').forEach((x) => x.classList.remove('active'));
+  b.classList.add('active'); salesPeriod = b.dataset.period; loadSales();
+}));
 $('gamesDate').addEventListener('change', loadGames);
 
 // ---- 설정: 매장/요금제/쿠폰 ----

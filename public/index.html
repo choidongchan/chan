@@ -89,7 +89,13 @@
 
         <!-- 매출 -->
         <div class="psec" id="p-sales">
-          <div class="wc-toolbar"><input type="date" id="salesDate" /></div>
+          <div class="wc-toolbar">
+            <div class="sub-tabs" id="salesTabs">
+              <button class="st active" data-period="day">일매출</button>
+              <button class="st" data-period="month">월매출</button>
+              <button class="st" data-period="year">연매출</button>
+            </div>
+          </div>
           <div id="salesReport"></div>
         </div>
 

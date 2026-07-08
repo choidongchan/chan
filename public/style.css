@@ -115,6 +115,9 @@ button.danger { background: var(--warn); }
 .wc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .wc-actions { display: flex; gap: 8px; }
 .wc-search { min-width: 220px; padding: 9px 12px; border: 1px solid #dbe2ee; border-radius: 20px; background: #fff; color: #1f2740; font-size: 13px; }
+.sub-tabs { display: flex; gap: 4px; background: #e9eef7; padding: 4px; border-radius: 22px; }
+.wc-body .sub-tabs .st { background: transparent; color: #7a869f; padding: 8px 20px; border-radius: 18px; font-weight: 700; box-shadow: none; }
+.wc-body .sub-tabs .st.active { background: #3f6fff; color: #fff; }
 /* 팝업 내부 밝은 테마 오버라이드 */
 .wc-body .tbl { background: #fff; box-shadow: 0 2px 10px rgba(30,40,80,.06); font-size: 13px; }
 .wc-body .tbl th { background: #f7f9fd; color: #7a869f; border-bottom: 1px solid #eef2f8; }
