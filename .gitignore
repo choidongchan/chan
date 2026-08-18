@@ -5,6 +5,3 @@ wmcounter.db
 wmcounter.db-*
 *.log
 scripts/*.png
-scripts/yt-dlp.exe
-docs/recipes/자막/*.srt
-docs/recipes/자막/*.vtt
